@@ -1,6 +1,9 @@
 from cached_property import cached_property
 
 import nltk
+from nltk.tag.perceptron import PerceptronTagger
+
+TAGGER = PerceptronTagger()
 
 
 class Para():
@@ -53,7 +56,7 @@ class Para():
 
         :reuturn: A list of nltk tokenized words with their tag
         '''
-        return self.pos_tag(self.words)
+        return TAGGER.tag(self.words)
 
     def serialize(self):
         return {
