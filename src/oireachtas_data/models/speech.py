@@ -15,7 +15,7 @@ class Speech():
         self._as = _as
         self.eid = eid
 
-        if paras is not None and paras is not []:
+        if paras is not None and paras != []:
             types = list(set([type(p) for p in paras]))
             assert(len(types) == 1)
             assert(types[0] == Para)
