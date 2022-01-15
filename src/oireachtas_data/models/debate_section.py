@@ -93,8 +93,12 @@ class DebateSection():
                 source = urlopen(visual_link)
                 soup = bs4.BeautifulSoup(source, 'html.parser')
 
-                section = soup.find_all('div', {"class": 'db-section'})[0]
-                speeches = section.find_all('div', {'class': 'speech'})
+                section = soup.find_all('div', {"class": 'db-section'})
+                if not len(section):
+                    # could not get ay data from the sections
+                    return
+
+                speeches = section[0].find_all('div', {'class': 'speech'})
 
                 for speech in speeches:
                     name = speech.find('a', {'class': 'c-avatar__name-link'}).text
