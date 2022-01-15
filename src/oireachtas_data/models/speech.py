@@ -3,6 +3,13 @@ from oireachtas_data.models.para import Para
 
 class Speech():
 
+    __slots__ = (
+        'by',
+        '_as',
+        'eid',
+        'paras'
+    )
+
     def __init__(self, by=None, _as=None, eid=None, paras=None):
         '''
 

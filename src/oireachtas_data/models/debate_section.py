@@ -8,6 +8,20 @@ from oireachtas_data.models.para import Para
 
 class DebateSection():
 
+    __slots__ = (
+        'bill',
+        'contains_debate',
+        'counts',
+        'debate_section_id',
+        'debate_type',
+        'data_uri',
+        'parent_debate_section',
+        'show_as',
+        'speakers',
+        'speeches',
+        'loaded'
+    )
+
     def __init__(
         self,
         bill=None,
@@ -33,7 +47,6 @@ class DebateSection():
         self.speakers = speakers
         self.speeches = speeches if speeches else []
 
-        self._data = None
         self.loaded = loaded
 
     @staticmethod

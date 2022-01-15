@@ -10,6 +10,12 @@ class Para():
     Inherits from Text which has all the text analysis bits
     '''
 
+    __slots__ = (
+        'title',
+        'eid',
+        'content'
+    )
+
     def __init__(self, *args, **kwargs):
         '''
 
@@ -20,9 +26,6 @@ class Para():
         self.title = kwargs.get('title', None)
         self.eid = kwargs.get('eid', None)
         self.content = kwargs.get('content', None)
-
-        self.source = 'oireachtas'
-        self.sourcetype = 'debate'
 
     @staticmethod
     def parse(data):

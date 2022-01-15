@@ -10,6 +10,16 @@ from oireachtas_data.models.debate_section import DebateSection
 
 class Debate():
 
+    __slots__ = (
+        'date',
+        'chamber',
+        'counts',
+        'debate_sections',
+        'debate_type',
+        'data_uri',
+        'loaded'
+    )
+
     def __init__(
         self,
         date=None,
