@@ -1,3 +1,4 @@
+import os
 from urllib.request import urlopen
 
 import bs4
@@ -80,6 +81,41 @@ class DebateSection():
         except Exception as ex:
             if str(ex) != 'HTTP Error 403: Forbidden':
                 raise ex
+            else:
+                # go to the more visual site since api doesn't have everything
+
+                uri_splits = self.data_uri.split('/')
+                date_str = uri_splits[-4]
+                sect = os.path.splitext(uri_splits[-1])[0].split('_')[-1]
+
+                visual_link = f'https://www.oireachtas.ie/en/debates/debate/seanad/{date_str}/{sect}/'
+
+                source = urlopen(visual_link)
+                soup = bs4.BeautifulSoup(source, 'html.parser')
+
+                section = soup.find_all('div', {"class": 'db-section'})[0]
+                speeches = section.find_all('div', {'class': 'speech'})
+
+                for speech in speeches:
+                    name = speech.find('a', {'class': 'c-avatar__name-link'}).text
+                    paras = speech.find_all('p')
+                    spk = speech.attrs.get('id')
+
+                    self.speeches.append(
+                        Speech(
+                            by=name,
+                            _as=None,
+                            eid=spk,
+                            paras=[
+                                Para(
+                                    title=None,
+                                    eid=p.attrs.get('id'),
+                                    content=p.text
+                                ) for p in paras
+                            ]
+                        )
+                    )
+
             return
 
         soup = bs4.BeautifulSoup(source, 'html.parser')
@@ -126,3 +162,8 @@ class DebateSection():
     @property
     def is_from_pdf(self):
         return self.debate_type is None
+
+    @property
+    def is_empty(self):
+        # this can happen when there's access denied errors
+        return self.speakers == [] and self.speeches == []
