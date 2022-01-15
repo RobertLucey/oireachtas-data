@@ -107,12 +107,12 @@ class Debate():
 
             self.debate_sections = debate_sections
 
-            chamber = {
+            chambers = {
                 'Dáil Éireann': 'dail',
                 'Seanad Éireann': 'seanad'
             }
             url = 'https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf' % (
-                chamber,
+                chambers[self.chamber],
                 self.date
             )
 
