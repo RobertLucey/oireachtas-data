@@ -27,6 +27,10 @@ class Para():
         self.eid = kwargs.get('eid', None)
         self.content = kwargs.get('content', None)
 
+    @property
+    def __dict__(self):
+        return self.serialize()
+
     @staticmethod
     def parse(data):
         return Para(
