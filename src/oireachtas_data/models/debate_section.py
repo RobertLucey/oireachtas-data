@@ -101,7 +101,11 @@ class DebateSection():
                 speeches = section[0].find_all('div', {'class': 'speech'})
 
                 for speech in speeches:
-                    name = speech.find('a', {'class': 'c-avatar__name-link'}).text
+                    try:
+                        name = speech.find('a', {'class': 'c-avatar__name-link'}).text
+                    except:
+                        # For some reason doesn't have a name, should look into this
+                        continue
                     paras = speech.find_all('p')
                     spk = speech.attrs.get('id')
 
