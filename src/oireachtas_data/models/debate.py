@@ -88,6 +88,24 @@ class Debate():
             self.debate_type = data['debate_type']
             self.data_uri = data['data_uri']
         else:
+
+            chambers = {
+                'Dáil Éireann': 'dail',
+                'Seanad Éireann': 'seanad'
+            }
+            url = 'https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf' % (
+                chambers[self.chamber],
+                self.date
+            )
+
+            pdf_request = requests.get(url, stream=True)
+
+            with open(self.pdf_location, 'wb') as pdfile:
+                for chunk in pdf_request.iter_content(2000):
+                    pdfile.write(chunk)
+
+            # If we're missing data from the api cause of being forbidden we can get some data from the pdf
+
             debate_sections = []
             for section in self.debate_sections:
                 raw_debate_section = section['debateSection']
@@ -106,21 +124,6 @@ class Debate():
                 debate_sections.append(debate_section)
 
             self.debate_sections = debate_sections
-
-            chambers = {
-                'Dáil Éireann': 'dail',
-                'Seanad Éireann': 'seanad'
-            }
-            url = 'https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf' % (
-                chambers[self.chamber],
-                self.date
-            )
-
-            pdf_request = requests.get(url, stream=True)
-
-            with open(self.pdf_location, 'wb') as pdfile:
-                for chunk in pdf_request.iter_content(2000):
-                    pdfile.write(chunk)
 
         self.loaded = True
 
