@@ -41,10 +41,15 @@ class Section():
 
         content = '\n'.join(valid_lines)
 
+        data = ''
+
         if self.next_title is None:
-            data = content[
-                content.index(self.title) + len(self.title) + 1:
-            ]
+            try:
+                data = content[
+                    content.index(self.title) + len(self.title) + 1:
+                ]
+            except:
+                print('oops, could not find the last section')
         else:
             if self.title not in content or self.next_title not in content:
 
@@ -191,10 +196,14 @@ class PDF():
         self.data = f.read()
         f.close()
 
+        # Just weird thigs to remove, probably wobblyness in conversion to text
         self.data = self.data.replace('----', '')
         self.data = self.data.replace('\x0c', '')
 
+        # Removes timestamps of speach
         self.data = re.sub('\\d+\\/\\d+\\/\\d+[A-Za-z]+\\d+', '', self.data)
+
+        # would be handy to replace all "An Leas-Chathaoirleach:" with "\nAn Leas-Chathaoirleach:" so we can parse things easier really, sometimes they get merged into other words (and other common names)
 
         lines = self.data.split('\n')
         good_lines = []
@@ -251,9 +260,6 @@ class PDF():
             header_start = self.data[
                 self.data.index(header_start_str) + len(header_start_str) + 1:
             ]
-
-
-
 
         header_end = '\n\n'
         header = header_start[:header_start.index(header_end)]
