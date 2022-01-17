@@ -1,3 +1,4 @@
+import urllib
 from urllib.request import urlopen
 
 import bs4
@@ -46,7 +47,7 @@ class DebateSection():
         self.debate_type = debate_type
         self.data_uri = data_uri
         self.parent_debate_section = parent_debate_section
-        self.show_as = show_as
+        self.show_as = show_as.strip()
         self.speakers = speakers
         self.speeches = speeches if speeches else []
 
@@ -81,7 +82,7 @@ class DebateSection():
 
         try:
             source = urlopen(self.data_uri)
-        except Exception as ex:
+        except (Exception, urllib.error.HTTPError) as ex:
             if str(ex) != 'HTTP Error 403: Forbidden':
                 raise ex
             else:
