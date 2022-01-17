@@ -7,7 +7,8 @@ INSTALL_REQUIRES = (
     'requests',
     'cached_property',
     'bs4',
-    'nltk'
+    'nltk',
+    'pdftotext'
 )
 
 setup(

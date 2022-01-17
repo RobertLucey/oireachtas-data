@@ -1,7 +1,7 @@
 import json
 import os
 import pickle
-import datetime
+from itertools import islice
 
 from oireachtas_data.constants import OIREACHTAS_DIR
 from oireachtas_data.models.debate import Debate
@@ -56,3 +56,16 @@ def get_debates():
                 )
             )
     return debates
+
+
+def window(sequence, window_size=2):
+    """
+    Returns a sliding window (of width n) over data from the iterable
+    """
+    seq_iterator = iter(sequence)
+    result = tuple(islice(seq_iterator, window_size))
+    if len(result) == window_size:
+        yield result
+    for elem in seq_iterator:
+        result = result[1:] + (elem,)
+        yield result
