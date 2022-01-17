@@ -1,10 +1,10 @@
-import os
 from urllib.request import urlopen
 
 import bs4
 
 from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
+from oireachtas_data.models.pdf import PDF
 
 
 class DebateSection():
@@ -20,6 +20,7 @@ class DebateSection():
         'show_as',
         'speakers',
         'speeches',
+        'pdf_location',
         'loaded'
     )
 
@@ -35,6 +36,7 @@ class DebateSection():
         show_as=None,
         speakers=None,
         speeches=None,
+        pdf_location=None,
         loaded=False
     ):
         self.bill = bill
@@ -48,6 +50,7 @@ class DebateSection():
         self.speakers = speakers
         self.speeches = speeches if speeches else []
 
+        self.pdf_location = pdf_location
         self.loaded = loaded
 
     @staticmethod
@@ -82,49 +85,19 @@ class DebateSection():
             if str(ex) != 'HTTP Error 403: Forbidden':
                 raise ex
             else:
-                # go to the more visual site since api doesn't have everything
+                pdf = PDF(self.pdf_location)
 
-                uri_splits = self.data_uri.split('/')
-                date_str = uri_splits[-4]
-                sect = os.path.splitext(uri_splits[-1])[0].split('_')[-1]
-
-                visual_link = f'https://www.oireachtas.ie/en/debates/debate/seanad/{date_str}/{sect}/'
-
-                source = urlopen(visual_link)
-                soup = bs4.BeautifulSoup(source, 'html.parser')
-
-                section = soup.find_all('div', {"class": 'db-section'})
-                if not len(section):
-                    # could not get ay data from the sections
-                    return
-
-                speeches = section[0].find_all('div', {'class': 'speech'})
-
-                for speech in speeches:
-                    try:
-                        name = speech.find('a', {'class': 'c-avatar__name-link'}).text
-                    except:
-                        # For some reason doesn't have a name, should look into this
-                        continue
-                    paras = speech.find_all('p')
-                    spk = speech.attrs.get('id')
-
-                    self.speeches.append(
-                        Speech(
-                            by=name,
-                            _as=None,
-                            eid=spk,
-                            paras=[
-                                Para(
-                                    title=None,
-                                    eid=p.attrs.get('id'),
-                                    content=p.text
-                                ) for p in paras
-                            ]
-                        )
+                if self.show_as not in pdf.section_headers:
+                    # this could be a misspelling / one has more data / may just not be present
+                    # TODO should look at how close the strings are
+                    print(f'Could not find {self.show_as} in {self.pdf_location}')
+                else:
+                    section = [s for s in pdf.debate_sections if s.title == self.show_as][0]  # FIXME: close enough, not equals
+                    self.speeches.extend(
+                        section.speeches
                     )
 
-            return
+                return
 
         soup = bs4.BeautifulSoup(source, 'html.parser')
 
