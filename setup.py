@@ -23,8 +23,8 @@ setup(
     install_requires=INSTALL_REQUIRES,
     entry_points={
         'console_scripts': [
-            'load_debates = oireachtas.bin.load_debates:main',
-            'pull_debates = oireachtas.bin.pull_debates:main',
+            'load_debates = oireachtas_data.bin.load_debates:main',
+            'pull_debates = oireachtas_data.bin.pull_debates:main',
         ]
     }
 )
