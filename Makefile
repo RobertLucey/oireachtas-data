@@ -33,7 +33,12 @@ quick_build:
 test: build test_requirements quick_test
 
 quick_test:
-	$(IN_ENV) $(PYTHON) -m unittest
+	$(IN_ENV) $(TEST_CONTEXT) nosetests --with-coverage --cover-package=oireachtas_data --cover-erase --with-timer
+	$(IN_ENV) coverage report -m
+	$(IN_ENV) coverage html
 
 load_debates:
 	$(IN_ENV) load_debates
+
+pull_debates:
+	$(IN_ENV) pull_debates
