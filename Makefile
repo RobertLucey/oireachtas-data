@@ -33,7 +33,7 @@ quick_build:
 test: build test_requirements quick_test
 
 quick_test:
-	$(IN_ENV) $(TEST_CONTEXT) nosetests --with-coverage --cover-package=oireachtas_data --cover-erase --with-timer
+	$(IN_ENV) $(TEST_CONTEXT) nose2 --with-coverage
 	$(IN_ENV) coverage report -m
 	$(IN_ENV) coverage html
 
