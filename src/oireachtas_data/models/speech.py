@@ -45,3 +45,9 @@ class Speech():
             'eid': self.eid,
             'paras': [p.serialize() for p in self.paras]
         }
+
+    @property
+    def content(self):
+        return '\n'.join([
+            '\n' + para.content for para in self.paras
+        ])

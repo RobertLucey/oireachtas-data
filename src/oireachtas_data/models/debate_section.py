@@ -141,6 +141,22 @@ class DebateSection():
             'speeches': [s.serialize() for s in self.speeches]
         }
 
+    def speech_contains(self, substr, case_sensitive=True):
+        content = ''
+        for speech in self.speeches:
+            content += '\n' + speech.content
+
+        if case_sensitive:
+            return substr in content
+        else:
+            return substr.lower() in content.lower()
+
+    @property
+    def content(self):
+        return '\n'.join([
+            '\n' + speech.by + ': ' + speech.content for speech in self.speeches
+        ])
+
     @property
     def is_from_pdf(self):
         return self.debate_type is None
