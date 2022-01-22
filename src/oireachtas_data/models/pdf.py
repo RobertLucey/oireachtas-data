@@ -2,7 +2,6 @@ import re
 import os
 import datetime
 
-import pdftotext
 from cached_property import cached_property
 
 from oireachtas_data.models.speech import Speech
@@ -18,6 +17,7 @@ class Section():
 
     @property
     def content(self):
+        from oireachtas_data.utils import first_occuring
 
         lines = self.non_header_content.split('\n')
 
@@ -87,49 +87,43 @@ class Section():
                 ]
 
         # Remove tables of names from voting
-        while 'The Dáil divided: Tá,' in data:
-            table_start = data.index('The Dáil divided: Tá,')
-            if 'Question declared carried.' in data:
-                table_end = data.index('Question declared carried.')
-            elif 'Amendment declared lost.' in data:
-                table_end = data.index('Amendment declared lost.')
-            else:
+        while 'The Dáil divided: Tá,' in data or 'The Committee divided: Tá,' in data or 'The Seanad divided: Tá,' in data:
+            earliest = first_occuring(['The Dáil divided: Tá,', 'The Committee divided: Tá,', 'The Seanad divided: Tá,'], data)
+            first_occuring_string = earliest[1]
+
+            table_start = data.index(first_occuring_string)
+
+            earliest = first_occuring(['Question declared carried.', 'Amendment declared lost.'], data[table_start:])
+            if earliest[1] is None:
                 break
 
+            table_end = earliest[0]
+
             start = data[:table_start]
-            end = data[table_end + 5:]
+            end = data[table_start + table_end + 5:]
 
             data = start + '\n\n' + end
 
         data = ' '.join(data.split('[PAGEBREAK]'))
 
-        return data
+        return data.strip()
+
+    def __del__(self):
+        attrs_to_del = [
+            'non_header_content'
+        ]
+
+        for attr in attrs_to_del:
+            try:
+                delattr(self, attr)
+            except AttributeError:
+                pass
 
     @cached_property
     def non_header_content(self):
-        start_headers = [
-            '(OFFICIAL REPORT—Unrevised)',
-            'Insert Date Here\n',
+        return self.data[
+            self.data.rindex('����������������������������������'):
         ]
-
-        header_start_idx = -1
-        header_start_str = None
-        for i in start_headers:
-            try:
-                if self.data.index(i) > header_start_idx:
-                    header_start_idx = self.data.index(i)
-                    header_start_str = i
-            except (ValueError, IndexError):
-                pass
-
-            header_start = self.data[
-                self.data.index(header_start_str) + len(header_start_str) + 1:
-            ]
-
-        header_end = '\n\n'
-        data = header_start[header_start.index(header_end):]
-
-        return data
 
     @property
     def speeches(self):
@@ -140,6 +134,7 @@ class Section():
             :self.content.index(':')
         ]
 
+        # FIXME: this is a bit risky if the first line begins with 'name: speech'
         if '\n' not in first_line:
             # Can we just use 0 idx?
             return []
@@ -183,7 +178,8 @@ class PDF():
 
     def __init__(self, fp):
         self.fp = fp
-        self.load()
+        self.data = None
+        self.loaded = False
 
     def load(self):
         text_file = self.fp + '.txt'
@@ -197,7 +193,7 @@ class PDF():
         f.close()
 
         # Just weird thigs to remove, probably wobblyness in conversion to text
-        self.data = self.data.replace('----', '')
+        self.data = self.data.replace('-----', ' — ')  # interruption / continuation of interruption
         self.data = self.data.replace('\x0c', '')
 
         # Removes timestamps of speach
@@ -242,34 +238,17 @@ class PDF():
 
     @property
     def section_headers(self):
-        start_headers = [
-            '(OFFICIAL REPORT—Unrevised)',
-            'Insert Date Here\n',
-        ]
+        if not self.loaded:
+            self.load()
 
-        header_start_idx = -1
-        header_start_str = None
-        for i in start_headers:
-            try:
-                if self.data.index(i) > header_start_idx:
-                    header_start_idx = self.data.index(i)
-                    header_start_str = i
-            except (ValueError, IndexError):
-                pass
+        lines = self.data.split('\n')
+        header_lines = []
+        for line in lines:
+            if '��������������' in line:
+                header_lines.append(line.replace('�', ''))
 
-            header_start = self.data[
-                self.data.index(header_start_str) + len(header_start_str) + 1:
-            ]
-
-        header_end = '\n\n'
-        header = header_start[:header_start.index(header_end)]
-
-        header = header.replace('�', '')
-
-        headers = []
-
-        dirty_headers = header.split('\n')
-        for header in dirty_headers:
+        clean_headers = []
+        for header in header_lines:
 
             header = header.replace('\x08', '')
             if len(header.split()):
@@ -282,26 +261,25 @@ class PDF():
 
             header = ' '.join(header.strip().split('\n')).strip()
 
-            # if header.split()[0]
-
             if header:
                 try:
                     int(header[0])
                     datetime.datetime.strptime(header, '%d/%m/%YA%M%S0')
                 except (ValueError, IndexError):
-                    headers.append(header)
-
-        return headers
+                    clean_headers.append(header)
+        return clean_headers
 
     @property
-    def timestamp(self):
+    def date(self):
         return datetime.datetime.strptime(
-            self.data[:self.data.index('\n\n')].replace('\n', ' ').replace(',', ''),
-            '%A %d %B %Y'
+            os.path.splitext(self.fp.split('_')[-1])[0],
+            '%Y-%m-%d'
         )
 
     @property
     def debate_sections(self):
+        if not self.loaded:
+            self.load()
         from oireachtas_data.utils import window
         sections = []
         for title, next_title in window(self.section_headers + [None], window_size=2):

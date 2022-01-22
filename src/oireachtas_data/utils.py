@@ -69,3 +69,18 @@ def window(sequence, window_size=2):
     for elem in seq_iterator:
         result = result[1:] + (elem,)
         yield result
+
+
+def first_occuring(strings, content):
+    earliest = None
+    earliest_idx = float('inf')
+    for s in strings:
+        try:
+            idx = content.index(s)
+            if idx < earliest_idx:
+                earliest = s
+                earliest_idx = idx
+        except ValueError:
+            pass
+
+    return (earliest_idx, earliest)
