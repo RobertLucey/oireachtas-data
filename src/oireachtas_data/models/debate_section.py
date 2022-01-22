@@ -149,3 +149,11 @@ class DebateSection():
     def is_empty(self):
         # this can happen when there's access denied errors
         return self.speakers == [] and self.speeches == []
+
+    @property
+    def computed_speakers(self):
+        speakers = set()
+        for speech in self.speeches:
+            speakers.add(speech.by)
+
+        return speakers
