@@ -106,7 +106,13 @@ class Debate():
 
             pdf_request = requests.get(url, stream=True)
 
-            with open(self.pdf_location, 'wb') as pdfile:
+            # not self.pdf_location as recursive error
+            pdf_location = os.path.join(
+                OIREACHTAS_DIR,
+                '%s_%s_%s.pdf' % ('debate', self.chamber, self.date)
+            )
+
+            with open(pdf_location, 'wb') as pdfile:
                 for chunk in pdf_request.iter_content(2000):
                     pdfile.write(chunk)
 
