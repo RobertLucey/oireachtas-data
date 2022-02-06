@@ -1,11 +1,15 @@
+import os
+
 from unittest import TestCase
 
 from oireachtas_data.models.debate import Debate
+from oireachtas_data.constants import OIREACHTAS_DIR
 
 
 class DebateTest(TestCase):
 
     def test_parse(self):
+        os.makedirs(OIREACHTAS_DIR, exist_ok=True)
         self.assertEqual(
             Debate.parse(
                 {
