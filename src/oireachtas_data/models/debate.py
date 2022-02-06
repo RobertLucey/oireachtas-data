@@ -131,7 +131,7 @@ class Debate():
                     parent_debate_section=raw_debate_section['parentDebateSection'],
                     show_as=raw_debate_section['showAs'],
                     speakers=raw_debate_section['speakers'],
-                    pdf_location=self.pdf_location
+                    pdf_location=pdf_location
                 )
                 debate_section.load_data()
                 debate_sections.append(debate_section)
