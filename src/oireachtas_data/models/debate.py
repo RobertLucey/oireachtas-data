@@ -17,7 +17,8 @@ class Debate():
         'debate_sections',
         'debate_type',
         'data_uri',
-        'loaded'
+        'loaded',
+        '_json_location'
     )
 
     def __init__(
@@ -48,12 +49,17 @@ class Debate():
 
         self.loaded = loaded
 
+        self._json_location = None
+
+    def set_filepath(self, filepath):
+        self._json_location = filepath
+
     @staticmethod
     def from_file(filepath):
         from oireachtas_data.utils import get_file_content
-        return Debate.parse(
-            get_file_content(filepath)
-        )
+        debate = Debate()
+        debate.set_filepath(filepath)
+        return debate
 
     @staticmethod
     def parse(data):
@@ -129,6 +135,7 @@ class Debate():
         self.loaded = True
 
     def serialize(self):
+        self.load_data()
         return {
             'date': self.date,
             'chamber': self.chamber,
@@ -146,6 +153,7 @@ class Debate():
 
     @property
     def pdf_location(self):
+        self.load_data()
         return os.path.join(
             OIREACHTAS_DIR,
             '%s_%s_%s.pdf' % ('debate', self.chamber, self.date)
@@ -153,6 +161,9 @@ class Debate():
 
     @property
     def json_location(self):
+        if self._json_location:
+            return self._json_location
+
         return os.path.join(
             OIREACHTAS_DIR,
             '%s_%s_%s.json' % ('debate', self.chamber, self.date)
@@ -160,6 +171,7 @@ class Debate():
 
     @property
     def content_by_speaker(self):
+        self.load_data()
         speakers = defaultdict(list)
         for section in self.debate_sections:
             for speech in section.speeches:
@@ -168,6 +180,7 @@ class Debate():
 
     @property
     def timestamp(self):
+        self.load_data()
         return datetime.datetime.strptime(
             self.date,
             '%Y-%m-%d'
