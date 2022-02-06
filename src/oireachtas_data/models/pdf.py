@@ -199,6 +199,9 @@ class PDF():
         # Removes timestamps of speach
         self.data = re.sub('\\d+\\/\\d+\\/\\d+[A-Za-z]+\\d+', '', self.data)
 
+        self.data = self.data.replace('An Leas-Chathaoirleach:', '\nAn Leas-Chathaoirleach:')
+        self.data = self.data.replace('----An Cathaoirleach:', '\nAn Cathaoirleach:')
+
         # would be handy to replace all "An Leas-Chathaoirleach:" with "\nAn Leas-Chathaoirleach:" so we can parse things easier really, sometimes they get merged into other words (and other common names)
 
         lines = self.data.split('\n')
