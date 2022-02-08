@@ -201,6 +201,9 @@ class PDF():
 
         self.data = self.data.replace('An Leas-Chathaoirleach:', '\nAn Leas-Chathaoirleach:')
         self.data = self.data.replace('----An Cathaoirleach:', '\nAn Cathaoirleach:')
+        self.data = self.data.replace('----An Ceann Comhairle:', '\nAn Ceann Comhairle:')
+        self.data = self.data.replace('----Deputy', '\nDeputy')
+        self.data = self.data.replace('----Senator', '\nSenator')
 
         # would be handy to replace all "An Leas-Chathaoirleach:" with "\nAn Leas-Chathaoirleach:" so we can parse things easier really, sometimes they get merged into other words (and other common names)
 
