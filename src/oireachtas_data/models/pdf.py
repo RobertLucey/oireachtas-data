@@ -1,6 +1,8 @@
 import re
 import os
 import datetime
+import string
+from difflib import SequenceMatcher
 
 from cached_property import cached_property
 
@@ -44,12 +46,23 @@ class Section():
         data = ''
 
         if self.next_title is None:
-            try:
+            if self.title in content:
                 data = content[
                     content.index(self.title) + len(self.title) + 1:
                 ]
-            except:
+            elif self.title.rstrip(string.digits) in content:
+                data = content[
+                    content.index(self.title.rstrip(string.digits)) + len(self.title.rstrip(string.digits)) + 1:
+                ]
+            elif len(self.title) > 50 and self.title[:40] in content:
+                data = content[
+                    content.index(self.title[:40]) + len(self.title[:40]):
+                ]
+
+            else:
+                # This could be that the title down below is so long that it's split
                 print('oops, could not find the last section')
+
         else:
             if self.title not in content or self.next_title not in content:
 
@@ -59,14 +72,20 @@ class Section():
                 end_index = None
 
                 if self.title not in content:
-                    from oireachtas_data.utils import window
-                    for p, n in window(lines, window_size=2):
-                        if p + ' ' + n == self.title:
-                            start_index = content.index(p + '\n' + n)
+
+                    modified_title = self.title.rstrip(string.digits)
+                    if modified_title in content:
+                        start_index = content.index(modified_title)
+                    else:
+                        from oireachtas_data.utils import window
+                        for p, n in window(lines, window_size=2):
+                            if p + ' ' + n == modified_title:
+                                start_index = content.index(p + '\n' + n)
                 else:
                     start_index = content.index(self.title)
 
                 if start_index is None:
+                    # try remove numbers from the end of the title
                     print(f'Could not get {self.title} from content')
                     return ''
 
@@ -204,6 +223,7 @@ class PDF():
         self.data = self.data.replace('----An Ceann Comhairle:', '\nAn Ceann Comhairle:')
         self.data = self.data.replace('----Deputy', '\nDeputy')
         self.data = self.data.replace('----Senator', '\nSenator')
+        self.data = self.data.replace('----Acting Chairman', '\nActing Chairman')
 
         # would be handy to replace all "An Leas-Chathaoirleach:" with "\nAn Leas-Chathaoirleach:" so we can parse things easier really, sometimes they get merged into other words (and other common names)
 
@@ -242,19 +262,48 @@ class PDF():
 
         self.data = '\n'.join(good_lines)
 
+    def matching_header(self, show_as):
+        for header in self.section_headers:
+            if SequenceMatcher(None, header, show_as).ratio() > 0.8:
+                return header
+        return None
+
     @property
     def section_headers(self):
         if not self.loaded:
             self.load()
 
         lines = self.data.split('\n')
-        header_lines = []
-        for line in lines:
-            if '��������������' in line:
-                header_lines.append(line.replace('�', ''))
+        start = -1
+        end = -1
+        for idx, line in enumerate(lines):
+            # If there's a continue then it may be skipped. Long lines
+            # get first and last of ����� then if no ����� in line merge with the next line
+            if '��������������' in line and start != -1:
+                end = idx
+            if '��������������' in line and start == -1:
+                start = idx
+
+        header_lines = lines[start:end+1]
+        cleaned_header_lines = []
+        append_next = False
+        for header_line in header_lines:
+            if '\x08' in header_line:
+                if append_next:
+                    cleaned_header_lines[-1] += ' ' + header_line[:header_line.index('�')]
+                else:
+                    if '�' not in header_line:
+                        # page number at end
+                        cleaned_header_lines.append(header_line)
+                    else:
+                        cleaned_header_lines.append(header_line[:header_line.index('�')])
+                append_next = False
+            else:
+                cleaned_header_lines.append(header_line)
+                append_next = True
 
         clean_headers = []
-        for header in header_lines:
+        for header in cleaned_header_lines:
 
             header = header.replace('\x08', '')
             if len(header.split()):

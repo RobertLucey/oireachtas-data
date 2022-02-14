@@ -88,12 +88,13 @@ class DebateSection():
             else:
                 pdf = PDF(self.pdf_location)
 
-                if self.show_as not in pdf.section_headers:
-                    # this could be a misspelling / one has more data / may just not be present
-                    # TODO should look at how close the strings are
+                matching_header = pdf.matching_header(self.show_as)
+                if matching_header is None:
+                    # FIXME: may not be in debate sections, could just be on its own
+                    # look if there's a line just containing the header
                     print(f'Could not find {self.show_as} in {self.pdf_location}')
                 else:
-                    section = [s for s in pdf.debate_sections if s.title == self.show_as][0]  # FIXME: close enough, not equals
+                    section = [s for s in pdf.debate_sections if s.title == matching_header][0]
                     self.speeches.extend(
                         section.speeches
                     )
