@@ -142,3 +142,13 @@ class PDFTest(TestCase):
         pdf = PDF(pdf_path)
         pdf.load()
         self.assertGreater(len(pdf.data), 250_000)
+
+    def test_section_headers_long(self):
+        pdf_path = os.path.join(
+            self.resources_path,
+            'debate_Dáil Éireann_2021-10-06.pdf'
+        )
+
+        self.assertTrue(
+            'Planning and Development (Climate Emergency Measures) (Amendment) Bill 2021: Second Stage (Resumed) [Private Members]' in PDF(pdf_path).section_headers
+        )
