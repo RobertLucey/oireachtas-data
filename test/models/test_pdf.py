@@ -149,6 +149,8 @@ class PDFTest(TestCase):
             'debate_Dáil Éireann_2021-10-06.pdf'
         )
 
+        pdf = PDF(pdf_path)
+        pdf.load()
         self.assertTrue(
             'Planning and Development (Climate Emergency Measures) (Amendment) Bill 2021: Second Stage (Resumed) [Private Members]' in PDF(pdf_path).section_headers
         )
