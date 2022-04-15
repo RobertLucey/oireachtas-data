@@ -207,6 +207,10 @@ class PDF():
             with open(self.fp, 'rb') as f:
                 os.system(f'pdftotext \'{self.fp}\' \'{text_file}\'')
 
+        if not os.path.exists(text_file):
+            print('Could not convert pdf to text: %s' % (text_file))
+            return
+
         f = open(text_file, 'r')
         self.data = f.read()
         f.close()
@@ -273,6 +277,9 @@ class PDF():
     def section_headers(self):
         if not self.loaded:
             self.load()
+
+        if self.data is None:
+            return []
 
         lines = self.data.split('\n')
         start = -1
