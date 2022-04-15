@@ -219,6 +219,7 @@ class PDF():
         self.data = re.sub('\\d+\\/\\d+\\/\\d+[A-Za-z]+\\d+', '', self.data)
 
         self.data = self.data.replace('An Leas-Chathaoirleach:', '\nAn Leas-Chathaoirleach:')
+        self.data = self.data.replace('----An Leas-Chathaoirleach:', '\nAn Leas-Chathaoirleach:')
         self.data = self.data.replace('----An Cathaoirleach:', '\nAn Cathaoirleach:')
         self.data = self.data.replace('----An Ceann Comhairle:', '\nAn Ceann Comhairle:')
         self.data = self.data.replace('----Deputy', '\nDeputy')
