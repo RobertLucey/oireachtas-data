@@ -14,7 +14,7 @@ INSTALL_REQUIRES = (
 
 setup(
     name='oireachtas-data',
-    version='0.0.10',
+    version='0.0.11',
     python_requires='>=3.6',
     description='Oireachtas debate data',
     author='Robert Lucey',
