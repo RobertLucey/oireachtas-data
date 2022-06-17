@@ -119,7 +119,7 @@ class Debate():
             # If we're missing data from the api cause of being forbidden we can get some data from the pdf
 
             debate_sections = []
-            for section in self.debate_sections:
+            for idx, section in enumerate(self.debate_sections):
                 raw_debate_section = section['debateSection']
                 debate_section = DebateSection(
                     bill=raw_debate_section['bill'],
@@ -130,6 +130,8 @@ class Debate():
                     data_uri=raw_debate_section['formats']['xml']['uri'],
                     parent_debate_section=raw_debate_section['parentDebateSection'],
                     show_as=raw_debate_section['showAs'],
+                    show_as_idx=idx,
+                    show_as_context=[d['debateSection']['showAs'] for d in self.debate_sections],
                     speakers=raw_debate_section['speakers'],
                     pdf_location=pdf_location
                 )
