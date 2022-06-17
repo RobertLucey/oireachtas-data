@@ -10,14 +10,6 @@ from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
 
 
-def find_nth(haystack, needle, n):
-    start = haystack.find(needle)
-    while start >= 0 and n > 1:
-        start = haystack.find(needle, start+len(needle))
-        n -= 1
-    return start
-
-
 class Section():
 
     def __init__(self, data=None, title=None, date_string=None):
@@ -35,6 +27,7 @@ class Section():
                 # TODO: look into this
                 break
             idx = split.index(self.date_string)
+
             #prev = split[idx - 1]
             prev2 = split[idx - 2]
             prev3 = split[idx - 3]
@@ -66,7 +59,7 @@ class Section():
                 if len(final):
                     final[-1] = final[-1] + ' ' + line
                 else:
-                    pass # First line has no : so possibly the question
+                    pass  # First line has no : so possibly the question
 
         return '\n'.join(final)
 
@@ -118,10 +111,14 @@ class Page():
 
     @property
     def header(self):
-        return self.data[0:find_nth(self.data, '\n\n', 3)].replace('\n\n' + self.date_string + '\n\n', ' ').strip()
+        from oireachtas_data.utils import find_nth
+        return self.data[
+            0:find_nth(self.data, '\n\n', 3)
+        ].replace('\n\n' + self.date_string + '\n\n', ' ').strip()
 
     @property
     def sans_header(self):
+        from oireachtas_data.utils import find_nth
         return self.data[find_nth(self.data, '\n\n', 3):].strip()
 
     def serialize(self):
@@ -217,7 +214,7 @@ class PDF():
     def _debate_sections(self):
         if not self.loaded:
             self.load()
-        from oireachtas_data.utils import window
+
         sections = []
 
         html_file = self.fp.replace('.pdf', 's.html')
@@ -240,6 +237,7 @@ class PDF():
                     line_no_header_map[last_index] = possible_text.strip().replace('\xa0', ' ')
                     break
 
+        from oireachtas_data.utils import window
         for x, y in window(line_no_header_map.items(), window_size=2):
             content = html_lines[x[0]:y[0]-1]
 

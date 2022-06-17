@@ -8,6 +8,14 @@ from oireachtas_data.models.debate import Debate
 from oireachtas_data.models.para import Para
 
 
+def find_nth(haystack, needle, n):
+    start = haystack.find(needle)
+    while start >= 0 and n > 1:
+        start = haystack.find(needle, start+len(needle))
+        n -= 1
+    return start
+
+
 def merge_paras(paras):
     '''
     When you don't care about context it's often easier to treat many
