@@ -3,7 +3,7 @@ import datetime
 
 from unittest import TestCase
 
-from oireachtas_data.models.pdf import (
+from oireachtas_data.models.new_pdf import (
     PDF,
     Section
 )

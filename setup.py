@@ -8,7 +8,8 @@ INSTALL_REQUIRES = (
     'cached_property',
     'bs4',
     'nltk',
-    'pdftotext'
+    'pdftotext',
+    'transformers'
 )
 
 setup(

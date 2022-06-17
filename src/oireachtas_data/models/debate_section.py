@@ -5,7 +5,10 @@ import bs4
 
 from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
-from oireachtas_data.models.pdf import PDF
+from oireachtas_data.models.pdf import pdf_parser_get
+
+
+pdf_cache = {}
 
 
 class DebateSection():
@@ -19,6 +22,8 @@ class DebateSection():
         'data_uri',
         'parent_debate_section',
         'show_as',
+        'show_as_idx',
+        'show_as_context',
         'speakers',
         'speeches',
         'pdf_location',
@@ -35,6 +40,8 @@ class DebateSection():
         data_uri=None,
         parent_debate_section=None,
         show_as=None,
+        show_as_idx=None,
+        show_as_context=None,
         speakers=None,
         speeches=None,
         pdf_location=None,
@@ -48,6 +55,8 @@ class DebateSection():
         self.data_uri = data_uri
         self.parent_debate_section = parent_debate_section
         self.show_as = show_as.strip()
+        self.show_as_idx = show_as_idx
+        self.show_as_context = show_as_context
         self.speakers = speakers
         self.speeches = speeches if speeches else []
 
@@ -86,7 +95,19 @@ class DebateSection():
             if str(ex) != 'HTTP Error 403: Forbidden':
                 raise ex
             else:
-                pdf = PDF(self.pdf_location)
+                parser = pdf_parser_get(self.pdf_location)
+
+                if self.pdf_location not in pdf_cache:
+                    pdf_cache[self.pdf_location] = parser(self.pdf_location)
+
+                pdf = pdf_cache[self.pdf_location]
+
+                # Need to know what occurace of the show_as is, since there can be multiples
+                # will then need to get that one in the debate section
+
+                # this self.show_as is the xth occurance
+                #xth_occurance = self.show_as_context[0:self.show_as_idx + 1].count(self.show_as)
+                #import pdb; pdb.set_trace()
 
                 matching_header = pdf.matching_header(self.show_as)
                 if matching_header is None:
@@ -94,7 +115,10 @@ class DebateSection():
                     # look if there's a line just containing the header
                     print(f'Could not find {self.show_as} in {self.pdf_location}')
                 else:
+                    # TODO: as sections are used, remove them as there can be multples, don't want to repeat
+                    # can update the model since it's shared
                     section = [s for s in pdf.debate_sections if s.title == matching_header][0]
+
                     self.speeches.extend(
                         section.speeches
                     )
