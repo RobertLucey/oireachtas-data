@@ -117,7 +117,7 @@ class DebateSection():
                 else:
                     # TODO: as sections are used, remove them as there can be multples, don't want to repeat
                     # can update the model since it's shared
-                    section = [s for s in pdf.debate_sections if s.title == matching_header][0]
+                    section = [s for s in pdf.debate_sections if s.title.lower() == matching_header.lower()][0]
 
                     self.speeches.extend(
                         section.speeches
