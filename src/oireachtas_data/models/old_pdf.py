@@ -83,7 +83,7 @@ class Section():
                 continue
 
             person = line[:line.index(':')]
-            content = line[line.index(':'):]
+            content = line[line.index(':') + 2:]
 
             speeches.append(
                 Speech(
@@ -149,6 +149,7 @@ class PDF():
 
         if not os.path.exists(html_file):
             print('Could not convert pdf to html: %s' % (html_file))
+            self.loaded = True
             return
 
         # TODO: parse xml tree
@@ -164,6 +165,8 @@ class PDF():
                 continue
             if 'Minister' in bold.text:
                 continue
+
+            # Could clean up more but not much of a point
 
             possibles.append(bold)
 
