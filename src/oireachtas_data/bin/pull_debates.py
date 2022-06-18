@@ -15,8 +15,11 @@ from oireachtas_data.utils import get_debates
 
 
 def scrape_debates(d):
-    d.load_data()
-    d.write()
+    try:
+        d.load_data()
+        d.write()
+    except:
+        print('Possibly wrong pdf parsed: %s - %s' % (d.date, d.chamber))
 
 
 def main():
