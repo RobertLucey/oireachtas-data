@@ -149,20 +149,7 @@ class Section():
         if ':' not in self.content:
             return []
 
-        first_line = self.content[
-            :self.content.index(':')
-        ]
-
-        # FIXME: this is a bit risky if the first line begins with 'name: speech'
-        if '\n' not in first_line:
-            # Can we just use 0 idx?
-            return []
-
-        first_newline = first_line.rindex('\n')
-
-        data = self.content[
-            first_newline:
-        ]
+        data = self.content
 
         lines = data.split('\n')
         new_lines = []
