@@ -24,28 +24,26 @@ class Section():
         while self.date_string in split:
             count += 1
             if count > 1000:
-                # TODO: look into this
                 break
             idx = split.index(self.date_string)
 
-            #prev = split[idx - 1]
-            prev2 = split[idx - 2]
-            prev3 = split[idx - 3]
-            #nxt = split[idx + 1]
+            if idx == 0:
+                split = split[1:]
+            elif idx == 1:
+                split = split[2:]
+            elif idx == 2:
+                split = split[3:]
+            elif idx == 3:
+                split = split[4:]
+            else:
 
-            try:
-                int(prev3)
-            except:
-                # wasn't a page number so bleh.
-                # possible inf loop if the date is found but
-                # isn't a page break
-                continue
+                prev2 = split[idx - 2]
 
-            if prev2 != '':
-                continue
+                if prev2 != '':
+                    continue
 
-            # TODO: check that idx + 2 is always correct
-            split = split[0:idx-4] + split[idx + 2:]
+                # TODO: check that idx + 2 is always correct
+                split = split[0:idx-4] + split[idx + 2:]
 
         # TODO: need to join broken sentences
         # TODO: need to remove [NAME] casue that's a page break
@@ -70,7 +68,6 @@ class Section():
     def speeches(self):
 
         # FIXME if questions it goes '{int}. {NAME} the question'
-
         if ':' not in self.content:
             return []
 
@@ -78,7 +75,6 @@ class Section():
 
         lines = self.content.split('\n')
         for line in lines:
-
             if ':' not in line:
                 continue
 
