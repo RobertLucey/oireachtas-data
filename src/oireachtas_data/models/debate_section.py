@@ -97,6 +97,9 @@ class DebateSection():
             else:
                 parser = pdf_parser_get(self.pdf_location)
 
+                if parser is None:
+                    return
+
                 if self.pdf_location not in pdf_cache:
                     pdf_cache[self.pdf_location] = parser(self.pdf_location)
 
@@ -117,8 +120,8 @@ class DebateSection():
                 else:
                     # TODO: as sections are used, remove them as there can be multples, don't want to repeat
                     # can update the model since it's shared
-                    section = [s for s in pdf.debate_sections if s.title.lower() == matching_header.lower()][0]
 
+                    section = [s for s in pdf.debate_sections if s.title.lower().strip() == matching_header.lower().strip()][0]
                     self.speeches.extend(
                         section.speeches
                     )

@@ -26,6 +26,10 @@ def pdf_parser_get(pdf_location):
 
     content = to_text(pdf_location)
 
+    if content is None:
+        print('Could not parse pdf type: %s' % (pdf_location))
+        return
+
     if '��������������' in content:
         return NEW_PDF
     return OLD_PDF
