@@ -155,8 +155,9 @@ class PDF():
 
         possibles = []
         for bold in bolds:
-            if bold.nextSibling.name != 'br':
-                continue
+            if hasattr(bold.nextSibling, 'name'):
+                if bold.nextSibling.name != 'br':
+                    continue
             if 'Deputy' in bold.text:
                 continue
             if 'Minister' in bold.text:
