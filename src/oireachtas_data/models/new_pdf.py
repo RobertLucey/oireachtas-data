@@ -155,6 +155,7 @@ class Section():
         new_lines = []
         for line in lines:
             line = line.strip()
+
             if ':' in line and any([
                 'Deputy' in line,
                 line[:line.index(':')].strip().split(' ')[-1][0].isupper()
@@ -167,7 +168,9 @@ class Section():
         speeches = []
         for line in new_lines:
             person = line[0:line.index(':')].strip()
-            content = line[line.index(':') + 1:].strip()
+            content = line[line.index(':') + 1:]
+            content = content.replace('   Seanad Éireann  ', ' ').strip()
+
             speeches.append(
                 Speech(
                     by=person,
