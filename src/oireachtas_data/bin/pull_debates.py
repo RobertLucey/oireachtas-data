@@ -10,7 +10,7 @@ from urllib.request import Request
 from urllib.request import urlopen
 
 from oireachtas_data.models.debate import Debate
-from oireachtas_data.constants import OIREACHTAS_DIR
+from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.utils import get_debates
 
 
@@ -32,8 +32,8 @@ def main():
     )
     args = parser.parse_args()
 
-    if not os.path.exists(OIREACHTAS_DIR):
-        os.makedirs(OIREACHTAS_DIR, exist_ok=True)
+    if not os.path.exists(DEBATES_DIR):
+        os.makedirs(DEBATES_DIR, exist_ok=True)
 
     earliest_possible = datetime.datetime(1900, 1, 1)
     chamber_types = ['house', 'committee']

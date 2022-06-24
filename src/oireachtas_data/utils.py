@@ -3,7 +3,7 @@ import os
 import pickle
 from itertools import islice
 
-from oireachtas_data.constants import OIREACHTAS_DIR
+from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.models.debate import Debate
 from oireachtas_data.models.para import Para
 
@@ -51,14 +51,25 @@ def get_file_content(filepath):
         raise NotImplementedError()
 
 
+def iter_debates():
+    for f in os.listdir(DEBATES_DIR):
+        if f.endswith('.json'):
+            yield Debate.from_file(
+                os.path.join(
+                    DEBATES_DIR,
+                    f
+                )
+            )
+
+
 def get_debates():
     debates = []
-    for f in os.listdir(OIREACHTAS_DIR):
+    for f in os.listdir(DEBATES_DIR):
         if f.endswith('.json'):
             debates.append(
                 Debate.from_file(
                     os.path.join(
-                        OIREACHTAS_DIR,
+                        DEBATES_DIR,
                         f
                     )
                 )

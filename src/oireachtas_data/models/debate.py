@@ -4,7 +4,7 @@ import json
 import requests
 from collections import defaultdict
 
-from oireachtas_data.constants import OIREACHTAS_DIR
+from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.models.debate_section import DebateSection
 
 
@@ -108,7 +108,7 @@ class Debate():
 
             # not self.pdf_location as recursive error
             pdf_location = os.path.join(
-                OIREACHTAS_DIR,
+                DEBATES_DIR,
                 '%s_%s_%s.pdf' % ('debate', self.chamber, self.date)
             )
 
@@ -163,7 +163,7 @@ class Debate():
     def pdf_location(self):
         self.load_data()
         return os.path.join(
-            OIREACHTAS_DIR,
+            DEBATES_DIR,
             '%s_%s_%s.pdf' % ('debate', self.chamber, self.date)
         )
 
@@ -173,7 +173,7 @@ class Debate():
             return self._json_location
 
         return os.path.join(
-            OIREACHTAS_DIR,
+            DEBATES_DIR,
             '%s_%s_%s.json' % ('debate', self.chamber, self.date)
         )
 
