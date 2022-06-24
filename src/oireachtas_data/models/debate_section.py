@@ -121,10 +121,13 @@ class DebateSection():
                     # TODO: as sections are used, remove them as there can be multples, don't want to repeat
                     # can update the model since it's shared
 
-                    section = [s for s in pdf.debate_sections if s.title.lower().strip() == matching_header.lower().strip()][0]
-                    self.speeches.extend(
-                        section.speeches
-                    )
+                    try:
+                        section = [s for s in pdf.debate_sections if s.title.lower().strip() == matching_header.lower().strip()][0]
+                        self.speeches.extend(
+                            section.speeches
+                        )
+                    except IndexError:
+                        print('Could not get header "%s" from "%s"' % (matching_header, pdf.fp))
 
                 return
 
