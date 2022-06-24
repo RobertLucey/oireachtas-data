@@ -1,3 +1,6 @@
+import string
+from collections import Counter
+
 from cached_property import cached_property
 
 import nltk
@@ -5,6 +8,11 @@ from nltk.tag.perceptron import PerceptronTagger
 
 TAGGER = PerceptronTagger()
 
+
+class Paras():
+
+    def __init__(self, data=None):
+        self.data = data
 
 class Para():
     '''
