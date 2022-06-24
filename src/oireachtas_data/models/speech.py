@@ -1,5 +1,7 @@
 from oireachtas_data.models.para import Para
 
+from oireachtas_data import members
+
 
 class Speech():
 
@@ -51,3 +53,7 @@ class Speech():
         return '\n'.join([
             '\n' + para.content for para in self.paras
         ])
+
+    @property
+    def member_obj(self):
+        return members.get_member_from_id(self.by)

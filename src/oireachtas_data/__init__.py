@@ -1,5 +1,10 @@
 import nltk
 
+from oireachtas_data.models.member import Members
+
+members = Members()
+members.load()
+
 
 try:
     nltk.data.find('taggers/averaged_perceptron_tagger')
