@@ -17,6 +17,7 @@ setup(
     version='0.0.19',
     python_requires='>=3.6',
     description='Oireachtas debate data',
+    long_description='Oireachtas debate data',
     author='Robert Lucey',
     url='https://github.com/RobertLucey/oireachtas-data',
     packages=find_packages('src'),
