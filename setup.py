@@ -9,7 +9,8 @@ INSTALL_REQUIRES = (
     'bs4',
     'nltk',
     'pdftotext',
-    'transformers'
+    'transformers',
+    'unidecode'
 )
 
 setup(

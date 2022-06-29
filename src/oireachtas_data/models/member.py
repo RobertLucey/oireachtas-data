@@ -1,5 +1,9 @@
 import json
 import os
+import re
+from functools import lru_cache
+
+import unidecode
 
 from oireachtas_data.constants import MEMBERS_DIR
 
@@ -37,13 +41,36 @@ class Members():
                     )
         self.loaded = True
 
-    def get_member_id_from_name(self, name):
-        raise NotImplementedError()
+    @lru_cache(maxsize=500)
+    def get_member(self, member_str):
+        if member_str.startswith('#'):
+            return self.get_member_from_id(member_str)
+        else:
+            return self.get_member_from_name(member_str)
 
-        # TODO: remove title and if #something modify for full_name
+    def get_member_from_name(self, name):
+
+        # If a minister is specified it usually looks like:
+        # Minister for Something (Deputy Joan Malone)
+        if 'Minister' in name:
+            name = re.findall('\((.*?)\)', name)
+
+        name = name.replace('Deputy ', '')
+        name = name.replace('Senator ', '')
+        name = name.lstrip('Mr. ')
+        name = name.lstrip('Ms. ')
+        name = name.lstrip('Mrs. ')
+        name = name.replace(' ', '')
+        name = name.replace('\'', '')
+
+        # Remove fadas
+        name = unidecode.unidecode(name)
+
         for member in self.data:
-            if member.full_name == name:
+            if member.pid == name:
                 return member
+
+        print('Could not find member id for "%s"' % (name,))
 
     def get_member_from_id(self, pid):
         pid = pid.replace('#', '')

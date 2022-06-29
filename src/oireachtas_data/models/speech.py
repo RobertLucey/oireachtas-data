@@ -56,4 +56,4 @@ class Speech():
 
     @property
     def member_obj(self):
-        return members.get_member_from_id(self.by)
+        return members.get_member(self.by)

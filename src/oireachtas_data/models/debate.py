@@ -183,7 +183,11 @@ class Debate():
         speakers = defaultdict(list)
         for section in self.debate_sections:
             for speech in section.speeches:
-                speakers[speech.by].extend(speech.paras)
+                if speech.member_obj is not None:
+                    speakers[speech.member_obj.pid].extend(speech.paras)
+                else:
+                    # Couldn't get pid but want to include anyway
+                    speakers[speech.by].extend(speech.paras)
         return speakers
 
     @property
