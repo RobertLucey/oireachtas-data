@@ -23,7 +23,7 @@ class UtilsTest(TestCase):
     def test_get_debates(self):
         pass
 
-    def test_widow(self):
+    def test_window(self):
         self.assertEqual(
             list(window(range(10), window_size=2)),
             [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)]

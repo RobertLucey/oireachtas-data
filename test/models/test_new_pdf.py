@@ -154,3 +154,17 @@ class PDFTest(TestCase):
         self.assertTrue(
             'Planning and Development (Climate Emergency Measures) (Amendment) Bill 2021: Second Stage (Resumed) [Private Members]' in PDF(pdf_path).section_headers
         )
+
+    def test_seanad_strip(self):
+        # from page breaks Seanad Eireann would be sprinkled in the content
+        pdf_path = os.path.join(
+            self.resources_path,
+            'debate_Seanad Éireann_2020-07-17.pdf'
+        )
+
+        pdf = PDF(pdf_path)
+        pdf.load()
+
+        self.assertFalse(
+            'Seanad Éireann' in str(([s.serialize() for s in pdf.debate_sections[2].speeches if s.serialize()['by'] == 'Senator Regina Doherty']))
+        )
