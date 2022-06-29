@@ -158,10 +158,22 @@ class PDF():
             if hasattr(bold.nextSibling, 'name'):
                 if bold.nextSibling.name != 'br':
                     continue
+
+            # Is it even valid excluding these?
             if 'Deputy' in bold.text:
                 continue
             if 'Minister' in bold.text:
                 continue
+            if 'Senator' in bold.text:
+                continue
+
+            ## Maybe exclude the following?
+            #if 'Comhairle' in bold.text:
+            #    continue
+            #if 'Cathaoirleach' in bold.text:
+            #    continue
+            #if 'Taoiseach' in bold.text:
+            #    continue
 
             # Could clean up more but not much of a point
 
