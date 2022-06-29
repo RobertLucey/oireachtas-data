@@ -27,3 +27,7 @@ SOURCES/
 cache/
 
 .env
+
+test/resources/pdfs/*.txt
+test/resources/pdfs/*.png
+test/resources/pdfs/*.html
