@@ -10,7 +10,8 @@ INSTALL_REQUIRES = (
     'nltk',
     'pdftotext',
     'transformers',
-    'unidecode'
+    'unidecode',
+    'edlib'
 )
 
 setup(

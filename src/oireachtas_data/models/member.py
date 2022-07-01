@@ -1,8 +1,10 @@
 import json
 import os
 import re
+import difflib
 from functools import lru_cache
 
+import edlib
 import unidecode
 
 from oireachtas_data.constants import MEMBERS_DIR
@@ -41,37 +43,52 @@ class Members():
                     )
         self.loaded = True
 
-    @lru_cache(maxsize=500)
     def get_member(self, member_str):
         if member_str.startswith('#'):
             return self.get_member_from_id(member_str)
         else:
             return self.get_member_from_name(member_str)
 
+    @lru_cache(maxsize=500)
     def get_member_from_name(self, name):
 
         # If a minister is specified it usually looks like:
         # Minister for Something (Deputy Joan Malone)
         if 'Minister' in name:
-            name = re.findall('\((.*?)\)', name)
+            try:
+                name = re.findall('\((.*?)\)', name)[0]
+            except:
+                pass
 
         name = name.replace('Deputy ', '')
         name = name.replace('Senator ', '')
-        name = name.lstrip('Mr. ')
-        name = name.lstrip('Ms. ')
-        name = name.lstrip('Mrs. ')
+        name = name.replace('Mr. ', '')
+        name = name.replace('Ms. ', '')
+        name = name.replace('Mrs. ', '')
         name = name.replace(' ', '')
-        name = name.replace('\'', '')
 
         # Remove fadas
         name = unidecode.unidecode(name)
 
+        name = name.replace('\'', '')
+
         for member in self.data:
+            if member.pid is None:
+                continue
             if member.pid == name:
                 return member
 
-        print('Could not find member id for "%s"' % (name,))
+            # see if we can determine if they're too far apart so we can exit early. Can do this stupidly
 
+            if len(list(set(member.pid).symmetric_difference(name))) > 2:
+                continue
+
+            # FIXME: super slow
+            # Could keep a set of members we got and skip over them since this will only be reached once cause of the cache. Bit ugly
+            if edlib.align(member.pid, name)['editDistance'] < 4:
+                return member
+
+    @lru_cache(maxsize=500)
     def get_member_from_id(self, pid):
         pid = pid.replace('#', '')
 
