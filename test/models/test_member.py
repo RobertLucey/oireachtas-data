@@ -104,6 +104,12 @@ class MembersTest(TestCase):
         member = self.MEMBERS.get_member_from_id('#blahblah')
         self.assertIsNone(member)
 
+    def test_parties(self):
+        self.assertEqual(
+            self.MEMBERS.parties_of_member('LabhrasOMurchu'),
+            ['Fianna_Fáil']
+        )
+
 
 class MemberTest(TestCase):
 

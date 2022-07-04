@@ -96,6 +96,18 @@ class Members():
             if member.pid == pid:
                 return member
 
+    def parties_of_member(self, member):
+
+        if isinstance(member, str):
+            member = self.get_member_from_name(member)
+            if member is None:
+                return None
+
+        parties = []
+        for membership in member.memberships:
+            parties.append(membership.parties[0].party_code)
+
+        return parties
 
 class Member():
 
@@ -174,7 +186,6 @@ class Party():
 
             self.party_code = kwargs['party_code']
             self.show_as = kwargs['show_as']
-
 
     def serialize(self):
         return {
