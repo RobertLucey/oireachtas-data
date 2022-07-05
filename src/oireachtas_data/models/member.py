@@ -96,6 +96,7 @@ class Members():
             if member.pid == pid:
                 return member
 
+    @lru_cache(maxsize=500)
     def parties_of_member(self, member):
 
         if isinstance(member, str):
