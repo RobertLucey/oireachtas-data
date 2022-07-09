@@ -78,7 +78,11 @@ class Members():
             if member.pid == name:
                 return member
 
+        for member in self.data:
             # see if we can determine if they're too far apart so we can exit early. Can do this stupidly
+
+            if member.pid is None:
+                continue
 
             if len(list(set(member.pid).symmetric_difference(name))) > 2:
                 continue
