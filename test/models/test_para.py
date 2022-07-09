@@ -5,6 +5,18 @@ from oireachtas_data.models.para import Para
 
 class ParaTest(TestCase):
 
+    def test_hash(self):
+        self.assertEqual(
+            Para.parse(
+                dict(
+                    title='four',
+                    eid='five',
+                    content='six seven'
+                )
+            ).content_hash,
+            287143648808622511516264574481603430494
+        )
+
     def test_parse(self):
         self.assertEqual(
             Para.parse(

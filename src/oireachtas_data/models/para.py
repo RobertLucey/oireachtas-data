@@ -1,5 +1,4 @@
-import string
-from collections import Counter
+import hashlib
 
 from cached_property import cached_property
 
@@ -13,6 +12,7 @@ class Paras():
 
     def __init__(self, data=None):
         self.data = data
+
 
 class Para():
     '''
@@ -65,6 +65,15 @@ class Para():
         :reuturn: A list of nltk tokenized words with their tag
         '''
         return TAGGER.tag(self.words)
+
+    @property
+    def content_hash(self):
+        return int(
+            hashlib.md5(
+                bytes(self.content, 'utf8')
+            ).hexdigest(),
+            16
+        )
 
     def serialize(self):
         return {
