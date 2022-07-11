@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import difflib
 from functools import lru_cache
 
 import edlib
@@ -15,6 +14,7 @@ class Members():
     def __init__(self):
         self.loaded = False
         self.data = []
+        self.found_member_pids = set()
 
     def append(self, member):
         self.data.append(member)
@@ -49,9 +49,8 @@ class Members():
         else:
             return self.get_member_from_name(member_str)
 
-    @lru_cache(maxsize=500)
-    def get_member_from_name(self, name):
-
+    @staticmethod
+    def clean_name(name):
         # If a minister is specified it usually looks like:
         # Minister for Something (Deputy Joan Malone)
         if 'Minister' in name:
@@ -60,6 +59,8 @@ class Members():
             except:
                 pass
 
+        name = name.replace(')', '')
+        name = name.replace('(', '')
         name = name.replace('Deputy ', '')
         name = name.replace('Senator ', '')
         name = name.replace('Mr. ', '')
@@ -72,27 +73,57 @@ class Members():
 
         name = name.replace('\'', '')
 
+        return name
+
+    @lru_cache(maxsize=100)
+    def get_probable_members(self, starting_char):
+        probable_members = [m for m in self.data if m.pid is not None and m.pid[0] == starting_char]
+        probable_members_pids = set([m.pid for m in probable_members])
+        return probable_members, probable_members_pids
+
+    @lru_cache(maxsize=10000)
+    def get_member_from_name(self, name):
+
+        # Some issues with michael collins since there are two
+        # FIXME: Any near duplicate names should be noted.
+        # if there's a number at the end we need to be very careful
+
+        name = self.clean_name(name)
+
         for member in self.data:
             if member.pid is None:
                 continue
             if member.pid == name:
+                self.found_member_pids.add(member.pid)
+                return member
+
+        probable_members, probable_members_pids = self.get_probable_members(name[0])
+
+        for member in probable_members:
+            if member.pid is None:
+                continue
+            if member.pid in self.found_member_pids:
+                continue
+            if len(set(member.pid).symmetric_difference(name)) > 2:
+                continue
+            if edlib.align(member.pid, name)['editDistance'] < 4:
+                self.found_member_pids.add(member.pid)
                 return member
 
         for member in self.data:
-            # see if we can determine if they're too far apart so we can exit early. Can do this stupidly
-
             if member.pid is None:
                 continue
-
-            if len(list(set(member.pid).symmetric_difference(name))) > 2:
+            if member.pid in probable_members_pids:
                 continue
-
-            # FIXME: super slow
-            # Could keep a set of members we got and skip over them since this will only be reached once cause of the cache. Bit ugly
+            if member.pid in self.found_member_pids:
+                continue
+            if len(set(member.pid).symmetric_difference(name)) > 2:
+                continue
             if edlib.align(member.pid, name)['editDistance'] < 4:
+                self.found_member_pids.add(member.pid)
                 return member
 
-    @lru_cache(maxsize=500)
+    @lru_cache(maxsize=10000)
     def get_member_from_id(self, pid):
         pid = pid.replace('#', '')
 
@@ -100,7 +131,7 @@ class Members():
             if member.pid == pid:
                 return member
 
-    @lru_cache(maxsize=500)
+    @lru_cache(maxsize=10000)
     def parties_of_member(self, member):
 
         if isinstance(member, str):
@@ -115,6 +146,17 @@ class Members():
         return parties
 
 class Member():
+
+    __slots__ = (
+        'date_of_death',
+        'first_name',
+        'last_name',
+        'full_name',
+        'gender',
+        'member_code',
+        'pid',
+        'memberships'
+    )
 
     def __init__(self, *args, **kwargs):
         self.date_of_death = kwargs.get('dateOfDeath', kwargs.get('date_of_death', None))
@@ -154,6 +196,13 @@ class Member():
 
 class House():
 
+    __slots__ = (
+        'chamber_type',
+        'house_code',
+        'house_no',
+        'show_as'
+    )
+
     def __init__(self, *args, **kwargs):
         self.chamber_type = kwargs.get('chamberType', kwargs.get('chamber_type', None))
         self.house_code = kwargs.get('houseCode', kwargs.get('house_code', None))
@@ -170,6 +219,13 @@ class House():
 
 
 class Party():
+
+    __slots__ = (
+        'date_start',
+        'date_end',
+        'party_code',
+        'show_as'
+    )
 
     def __init__(self, *args, **kwargs):
 
@@ -203,6 +259,12 @@ class Party():
 
 class Represents():
 
+    __slots__ = (
+        'represent_code',
+        'represent_type',
+        'show_as'
+    )
+
     def __init__(self, *args, **kwargs):
         if 'represent' in kwargs:
             base = kwargs['represent']
@@ -226,6 +288,15 @@ class Represents():
 
 
 class Membership():
+
+    __slots__ = (
+        'date_start',
+        'date_end',
+        'house',
+        'offices',
+        'parties',
+        'represents'
+    )
 
     def __init__(self, *args, **kwargs):
 
