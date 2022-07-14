@@ -16,7 +16,7 @@ INSTALL_REQUIRES = (
 
 setup(
     name='oireachtas-data',
-    version='0.1.6',
+    version='0.1.7',
     python_requires='>=3.6',
     description='Oireachtas debate data',
     long_description='Oireachtas debate data',
@@ -29,6 +29,7 @@ setup(
         'console_scripts': [
             'load_debates = oireachtas_data.bin.load_debates:main',
             'pull_debates = oireachtas_data.bin.pull_debates:main',
+            'pull_members = oireachtas_data.bin.pull_members:main',
         ]
     }
 )
