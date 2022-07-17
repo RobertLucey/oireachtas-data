@@ -19,7 +19,7 @@ jobs:
         python-version: '3.x'
     - name: Install dependencies
       run: |
-        sudo apt-get install make build-essential libpoppler-cpp-dev pkg-config python-dev pdftohtml
+        sudo apt-get install make build-essential libpoppler-cpp-dev pkg-config python3-dev pdftohtml
         python -m pip install --upgrade pip
         python -m pip install virtualenv
     - name: Test
@@ -37,7 +37,7 @@ jobs:
         python-version: '3.x'
     - name: Install dependencies
       run: |
-        sudo apt-get install make build-essential libpoppler-cpp-dev pkg-config python-dev pdftohtml
+        sudo apt-get install make build-essential libpoppler-cpp-dev pkg-config python3-dev pdftohtml
         python -m pip install --upgrade pip
         python -m pip install virtualenv
     - name: Build package
