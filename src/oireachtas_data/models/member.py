@@ -67,13 +67,15 @@ class Members():
         name = name.replace('Ms. ', '')
         name = name.replace('Mrs. ', '')
         name = name.replace(' ', '')
+        name = name.replace('.', '')
+        name = name.replace('Acting Chairman', '')
 
         # Remove fadas
         name = unidecode.unidecode(name)
 
         name = name.replace('\'', '')
 
-        return name
+        return name.strip()
 
     @lru_cache(maxsize=100)
     def get_probable_members(self, starting_char):
@@ -94,6 +96,21 @@ class Members():
             if member.pid is None:
                 continue
             if member.pid == name:
+                self.found_member_pids.add(member.pid)
+                return member
+            if member.pid == f'{name}FF':
+                self.found_member_pids.add(member.pid)
+                return member
+            if member.pid == f'{name}LAB':
+                self.found_member_pids.add(member.pid)
+                return member
+            if member.pid == f'{name}FG':
+                self.found_member_pids.add(member.pid)
+                return member
+            if member.pid == f'{name}SF':
+                self.found_member_pids.add(member.pid)
+                return member
+            if member.pid == f'Dr{name}':
                 self.found_member_pids.add(member.pid)
                 return member
 
