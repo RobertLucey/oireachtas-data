@@ -92,6 +92,9 @@ class Members():
 
         name = self.clean_name(name)
 
+        if name == '':
+            return
+
         for member in self.data:
             if member.pid is None:
                 continue
