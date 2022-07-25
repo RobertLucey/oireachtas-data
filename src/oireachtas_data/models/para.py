@@ -8,35 +8,30 @@ from nltk.tag.perceptron import PerceptronTagger
 TAGGER = PerceptronTagger()
 
 
-class Paras():
-
+class Paras:
     def __init__(self, data=None):
         self.data = data
 
 
-class Para():
-    '''
+class Para:
+    """
     Paragraph object, has a title, id, and content.
 
     Inherits from Text which has all the text analysis bits
-    '''
+    """
 
-    __slots__ = (
-        'title',
-        'eid',
-        'content'
-    )
+    __slots__ = ("title", "eid", "content")
 
     def __init__(self, *args, **kwargs):
-        '''
+        """
 
         :kwarg title: Sometimes a paragraph has a title, not often
         :kwarg eid: Incremented id of the paragraph
         :kwarg content: The str text content
-        '''
-        self.title = kwargs.get('title', None)
-        self.eid = kwargs.get('eid', None)
-        self.content = kwargs.get('content', None)
+        """
+        self.title = kwargs.get("title", None)
+        self.eid = kwargs.get("eid", None)
+        self.content = kwargs.get("content", None)
 
     @property
     def __dict__(self):
@@ -44,40 +39,27 @@ class Para():
 
     @staticmethod
     def parse(data):
-        return Para(
-            title=data['title'],
-            eid=data['eid'],
-            content=data['content']
-        )
+        return Para(title=data["title"], eid=data["eid"], content=data["content"])
 
     @cached_property
     def words(self):
-        '''
+        """
 
         :return: A list of nltk tokenized words
-        '''
+        """
         return nltk.word_tokenize(self.content)
 
     @cached_property
     def tokens(self):
-        '''
+        """
 
         :reuturn: A list of nltk tokenized words with their tag
-        '''
+        """
         return TAGGER.tag(self.words)
 
     @property
     def content_hash(self):
-        return int(
-            hashlib.md5(
-                bytes(self.content, 'utf8')
-            ).hexdigest(),
-            16
-        )
+        return int(hashlib.md5(bytes(self.content, "utf8")).hexdigest(), 16)
 
     def serialize(self):
-        return {
-            'title': self.title,
-            'eid': self.eid,
-            'content': self.content
-        }
+        return {"title": self.title, "eid": self.eid, "content": self.content}

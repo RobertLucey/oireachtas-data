@@ -11,10 +11,7 @@ def main():
     if not os.path.exists(MEMBERS_DIR):
         os.makedirs(MEMBERS_DIR, exist_ok=True)
 
-    chambers = [
-        'dail',
-        'seanad'
-    ]
+    chambers = ["dail", "seanad"]
 
     base_url = "https://api.oireachtas.ie/v1/members?date_start=1900-01-01&chamber_id=&chamber={chamber}&date_end=2099-01-01&limit=9999"
 
@@ -25,12 +22,12 @@ def main():
 
         result = requests.get(url)
 
-        for result in result.json()['results']:
-            member = Member(**result['member'])
+        for result in result.json()["results"]:
+            member = Member(**result["member"])
             members.append(member)
 
     members.write()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
