@@ -4,7 +4,6 @@ from oireachtas_data import members
 
 
 class Speech:
-
     __slots__ = ("by", "_as", "eid", "paras")
 
     def __init__(self, by=None, _as=None, eid=None, paras=None):

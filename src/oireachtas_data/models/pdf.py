@@ -23,7 +23,6 @@ def to_text(fp):
 
 
 def pdf_parser_get(pdf_location):
-
     content = to_text(pdf_location)
 
     if content is None:

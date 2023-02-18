@@ -7,7 +7,6 @@ from oireachtas_data.constants import MEMBERS_DIR
 
 
 def main():
-
     if not os.path.exists(MEMBERS_DIR):
         os.makedirs(MEMBERS_DIR, exist_ok=True)
 

@@ -12,7 +12,6 @@ pdf_cache = {}
 
 
 class DebateSection:
-
     __slots__ = (
         "bill",
         "contains_debate",

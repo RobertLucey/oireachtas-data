@@ -9,7 +9,6 @@ from oireachtas_data.models.debate_section import DebateSection
 
 
 class Debate:
-
     __slots__ = (
         "date",
         "chamber",
@@ -92,7 +91,6 @@ class Debate:
             self.debate_type = data["debate_type"]
             self.data_uri = data["data_uri"]
         else:
-
             chambers = {"Dáil Éireann": "dail", "Seanad Éireann": "seanad"}
             url = (
                 "https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf"
@@ -152,7 +150,7 @@ class Debate:
     def write(self, location=None):
         if location is None:
             location = self.json_location
-        with open(location, 'w') as outfile:
+        with open(location, "w") as outfile:
             outfile.write(json.dumps(self.serialize()))
 
     @property

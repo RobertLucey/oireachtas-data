@@ -35,7 +35,6 @@ class Section:
             elif idx == 3:
                 split = split[4:]
             else:
-
                 prev2 = split[idx - 2]
 
                 if prev2 != "":
@@ -65,7 +64,6 @@ class Section:
 
     @cached_property
     def speeches(self):
-
         # FIXME if questions it goes '{int}. {NAME} the question'
         if ":" not in self.content:
             return []
@@ -179,7 +177,6 @@ class PDF:
         self.loaded = True
 
     def matching_header(self, show_as):
-
         self.load()
 
         space = "\xa0"

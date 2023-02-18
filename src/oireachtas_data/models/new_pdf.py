@@ -59,14 +59,12 @@ class Section:
 
         else:
             if self.title not in content or self.next_title not in content:
-
                 lines = content.split("\n")
 
                 start_index = None
                 end_index = None
 
                 if self.title not in content:
-
                     modified_title = self.title.rstrip(string.digits)
                     if modified_title in content:
                         start_index = content.index(modified_title)
@@ -318,7 +316,6 @@ class PDF:
 
         clean_headers = []
         for header in cleaned_header_lines:
-
             header = header.replace("\x08", "")
             if len(header.split()):
                 if header.split()[-1].isnumeric():

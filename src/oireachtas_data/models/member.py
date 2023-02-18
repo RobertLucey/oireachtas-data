@@ -80,7 +80,6 @@ class Members:
 
     @lru_cache(maxsize=10000)
     def get_member_from_name(self, name):
-
         # Some issues with michael collins since there are two
         # FIXME: Any near duplicate names should be noted.
         # if there's a number at the end we need to be very careful
@@ -148,7 +147,6 @@ class Members:
 
     @lru_cache(maxsize=10000)
     def parties_of_member(self, member):
-
         if isinstance(member, str):
             member = self.get_member_from_name(member)
             if member is None:
@@ -162,7 +160,6 @@ class Members:
 
 
 class Member:
-
     __slots__ = (
         "date_of_death",
         "first_name",
@@ -206,7 +203,6 @@ class Member:
 
 
 class House:
-
     __slots__ = ("chamber_type", "house_code", "house_no", "show_as")
 
     def __init__(self, *args, **kwargs):
@@ -225,11 +221,9 @@ class House:
 
 
 class Party:
-
     __slots__ = ("date_start", "date_end", "party_code", "show_as")
 
     def __init__(self, *args, **kwargs):
-
         if "party" in kwargs:
             base = kwargs["party"]
 
@@ -242,7 +236,6 @@ class Party:
             self.show_as = base["showAs"]
 
         else:
-
             self.date_start = kwargs["date_start"]
             self.date_end = kwargs["date_end"]
 
@@ -259,7 +252,6 @@ class Party:
 
 
 class Represents:
-
     __slots__ = ("represent_code", "represent_type", "show_as")
 
     def __init__(self, *args, **kwargs):
@@ -271,7 +263,6 @@ class Represents:
             self.show_as = base["showAs"]
 
         else:
-
             self.represent_code = kwargs["represent_code"]
             self.represent_type = kwargs["represent_type"]
             self.show_as = kwargs["show_as"]
@@ -285,11 +276,9 @@ class Represents:
 
 
 class Membership:
-
     __slots__ = ("date_start", "date_end", "house", "offices", "parties", "represents")
 
     def __init__(self, *args, **kwargs):
-
         if "dateRange" in kwargs:
             date_range = kwargs["dateRange"]
             self.date_start = date_range.get("start", None)
