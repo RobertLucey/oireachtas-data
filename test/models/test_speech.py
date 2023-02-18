@@ -62,5 +62,5 @@ class SpeechTest(TestCase):
                     Para(title="eight", eid="nine", content="ten"),
                 ],
             ).content,
-            '\nsix seven\n\nten'
+            "\nsix seven\n\nten",
         )

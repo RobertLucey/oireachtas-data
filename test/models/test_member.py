@@ -4,7 +4,6 @@ from oireachtas_data.models.member import Member, Members
 
 
 class MembersTest(TestCase):
-
     SAMPLE_MEMBERS_CONTENT = [
         {
             "date_of_death": None,
@@ -111,7 +110,6 @@ class MembersTest(TestCase):
 
 
 class MemberTest(TestCase):
-
     SAMPLE_MEMBER_CONTENT = {
         "date_of_death": None,
         "first_name": "Labhrás",

@@ -6,13 +6,10 @@ from oireachtas_data.models.para import Para, Paras
 class ParasTest(TestCase):
     def test_paras_init(self):
         paras = Paras(
-            data=[
-                Para.parse(
-                    dict(title="four", eid="five", content="six seven")
-                )
-            ]
+            data=[Para.parse(dict(title="four", eid="five", content="six seven"))]
         )
         # TODO: Build out paras
+
 
 class ParaTest(TestCase):
     def test_hash(self):

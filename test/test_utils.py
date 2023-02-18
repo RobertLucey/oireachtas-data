@@ -6,21 +6,14 @@ from oireachtas_data.utils import (
     get_debates,
     window,
     first_occuring,
-    find_nth
+    find_nth,
 )
 
 
 class UtilsTest(TestCase):
-
     def test_find_nth(self):
-        self.assertEqual(
-            find_nth("12321", "2", 0),
-            1
-        )
-        self.assertEqual(
-            find_nth("12321", "2", 2),
-            3
-        )
+        self.assertEqual(find_nth("12321", "2", 0), 1)
+        self.assertEqual(find_nth("12321", "2", 2), 3)
 
     @skip("TODO")
     def test_merge_paras(self):
