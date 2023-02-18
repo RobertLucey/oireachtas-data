@@ -149,8 +149,10 @@ class Debate:
             "sections": [s.serialize() for s in self.debate_sections],
         }
 
-    def write(self):
-        with open(self.json_location, "w") as outfile:
+    def write(self, location=None):
+        if location is None:
+            location = self.json_location
+        with open(location, 'w') as outfile:
             outfile.write(json.dumps(self.serialize()))
 
     @property
