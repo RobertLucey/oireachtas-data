@@ -4,7 +4,7 @@ from oireachtas_data import members
 
 
 class Speech:
-    __slots__ = ("by", "_as", "eid", "paras")
+    __slots__ = ("_by", "_as", "eid", "paras")
 
     def __init__(self, by=None, _as=None, eid=None, paras=None):
         """
@@ -14,7 +14,7 @@ class Speech:
         :kwarf eid: incrementing id of the speech
         :kwarg paras: list of Para objects
         """
-        self.by = by
+        self._by = by
         self._as = _as
         self.eid = eid
 
@@ -24,6 +24,13 @@ class Speech:
             assert types[0] == Para
 
         self.paras = paras if paras else []
+
+    @property
+    def by(self):
+        if isinstance(self._by, str) and self._by.startswith("#"):
+            return self._by.replace("#", "")
+
+        return self._by
 
     @staticmethod
     def parse(data):
