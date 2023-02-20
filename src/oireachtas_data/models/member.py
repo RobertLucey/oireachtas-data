@@ -167,7 +167,7 @@ class Member:
         "full_name",
         "gender",
         "member_code",
-        "pid",
+        "_pid",
         "memberships",
     )
 
@@ -180,7 +180,7 @@ class Member:
         self.full_name = kwargs.get("fullName", kwargs.get("full_name", None))
         self.gender = kwargs.get("gender", kwargs.get("gender", None))
         self.member_code = kwargs.get("memberCode", kwargs.get("member_code", None))
-        self.pid = kwargs.get("pId", kwargs.get("pid", None))
+        self._pid = kwargs.get("pId", kwargs.get("pid", None))
 
         self.memberships = []
         for membership in kwargs["memberships"]:
@@ -188,6 +188,13 @@ class Member:
                 self.memberships.append(Membership(**membership["membership"]))
             else:
                 self.memberships.append(Membership(**membership))
+
+    @property
+    def pid(self):
+        if isinstance(self._pid, str) and self._pid.startswith("#"):
+            return self._pid.replace("#", "")
+
+        return self._pid
 
     def serialize(self):
         return {
