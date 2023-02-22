@@ -189,3 +189,26 @@ class PDFTest(TestCase):
                 )
             )
         )
+
+
+class Test_de2016_06_27(TestCase):
+
+    def setUp(self):
+        self.resources_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ),
+            "test/resources/pdfs",
+        )
+
+    def test_detect(self):
+        pdf_path = os.path.join(
+            self.resources_path, "debate_Dáil Éireann_2016-06-27.pdf"
+        )
+
+        pdf = PDF(pdf_path)
+
+        self.assertEqual(
+            len(pdf.debate_sections),
+            1
+        )
