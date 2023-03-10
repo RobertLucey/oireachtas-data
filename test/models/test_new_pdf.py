@@ -139,6 +139,22 @@ class PDFTest(TestCase):
         pdf = PDF(pdf_path)
         self.assertEqual(len(pdf.debate_sections), 10)
 
+        self.assertEqual(
+            [section.title for section in pdf.debate_sections],
+            [
+                "Gnó an tSeanaid - Business of Seanad",
+                "Nithe i dtosach suíonna - Commencement Matters",
+                "School Enrolments",
+                "National Asset Management Agency",
+                "General Practitioner Services",
+                "Equality Issues",
+                "Gnó an tSeanaid - Business of Seanad",
+                "An tOrd Gnó - Order of Business",
+                "Address to Seanad Éireann by An Taoiseach",
+                "Air Accident Investigation Unit Final Report into R116 Air Accident: Statements",
+            ],
+        )
+
     def test_date(self):
         pdf_path = os.path.join(
             self.resources_path, "debate_Seanad Éireann_2021-11-18.pdf"
@@ -207,7 +223,12 @@ class Test_de2016_06_27(TestCase):
 
         pdf = PDF(pdf_path)
 
-        self.assertEqual(len(pdf.debate_sections), 1)
+        self.assertEqual(
+            [section.title for section in pdf.debate_sections],
+            [
+                "United Kingdom Referendum on European Union Membership: Statements"
+            ]
+        )
 
 
 class Test_de2051_04_24(TestCase):
@@ -233,6 +254,9 @@ Members] ^H�����������������������
         # gets picked up as one DS and its title is "Members]"
 
         self.assertEqual(
-            pdf.debate_sections[0].title,
-            "Industrial Relations (Members of the Garda Síochána and the Defence Forces) Bill 2015: Second Stage [Private Members]",
+            [section.title for section in pdf.debate_sections],
+            [
+                "Industrial Relations (Members of the Garda Síochána and the Defence Forces) Bill 2015: Second Stage [Private Members]",
+                "Report on Land Use: Motion"
+            ]
         )
