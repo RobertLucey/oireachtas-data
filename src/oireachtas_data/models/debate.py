@@ -1,8 +1,9 @@
 import os
 import datetime
-import json
 import requests
 from collections import defaultdict
+
+import ujson
 
 from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.models.debate_section import DebateSection
@@ -151,7 +152,7 @@ class Debate:
         if location is None:
             location = self.json_location
         with open(location, "w") as outfile:
-            outfile.write(json.dumps(self.serialize()))
+            outfile.write(ujson.dumps(self.serialize()))
 
     @property
     def pdf_location(self):

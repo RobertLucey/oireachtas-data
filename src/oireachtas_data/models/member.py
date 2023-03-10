@@ -1,8 +1,8 @@
-import json
 import os
 import re
 from functools import lru_cache
 
+import ujson
 import edlib
 import unidecode
 
@@ -23,7 +23,7 @@ class Members:
 
     def write(self):
         with open(os.path.join(MEMBERS_DIR, "members.json"), "w") as f:
-            f.write(json.dumps(self.serialize()))
+            f.write(ujson.dumps(self.serialize()))
 
     def load(self):
         if self.loaded:
@@ -31,7 +31,7 @@ class Members:
 
         if os.path.exists(os.path.join(MEMBERS_DIR, "members.json")):
             with open(os.path.join(MEMBERS_DIR, "members.json"), "r") as f:
-                data = json.loads(f.read())
+                data = ujson.loads(f.read())
                 for d in data:
                     self.data.append(Member(**d))
         self.loaded = True

@@ -1,9 +1,9 @@
 import argparse
 import datetime
-import json
 import os
 from multiprocessing.pool import ThreadPool
 
+import ujson
 import tqdm
 
 from urllib.request import Request
@@ -74,7 +74,7 @@ def main():
                 headers={"accept": "application/json"},
             )
             response = urlopen(req)
-            data = json.loads(response.read())
+            data = ujson.loads(response.read())
 
             print("got debates: %s" % (len(data["results"])))
 

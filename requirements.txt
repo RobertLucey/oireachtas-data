@@ -1,3 +1,4 @@
+ujson
 requests
 cached_property
 bs4

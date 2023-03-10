@@ -4,6 +4,7 @@ from setuptools import (
 )
 
 INSTALL_REQUIRES = (
+    'ujson',
     'requests',
     'cached_property',
     'bs4',

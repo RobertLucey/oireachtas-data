@@ -1,7 +1,8 @@
-import json
 import os
 import pickle
 from itertools import islice
+
+import ujson
 
 from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.models.debate import Debate
@@ -42,7 +43,7 @@ def get_file_content(filepath):
         return open(filepath, "r").read()
     elif ext == ".json":
         f = open(filepath, "r")
-        data = json.loads(f.read())
+        data = ujson.loads(f.read())
         f.close()
         return data
     elif ext == ".pickle":
