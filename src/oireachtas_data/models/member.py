@@ -110,7 +110,7 @@ class Members:
                 return member
             if member_pid == f"Dr{name}":
                 return member
-            if f'Ms{member_pid}' == name:
+            if f"Ms{member_pid}" == name:
                 return member
 
         probable_members, probable_members_pids = self.get_probable_members(name[0])
