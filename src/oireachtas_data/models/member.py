@@ -13,7 +13,6 @@ class Members:
     def __init__(self):
         self.loaded = False
         self.data = []
-        self.found_member_pids = set()
 
     def append(self, member):
         self.data.append(member)
@@ -90,52 +89,56 @@ class Members:
         if name == "":
             return
 
+        member_pid_used_set = set()
         for member in self.data:
-            if member.pid is None:
+            member_pid = member.pid
+            if member_pid in member_pid_used_set:
                 continue
-            if member.pid == name:
-                self.found_member_pids.add(member.pid)
+            member_pid_used_set.add(member_pid)
+
+            if member_pid is None:
+                continue
+            if member_pid == name:
                 return member
-            if member.pid == f"{name}FF":
-                self.found_member_pids.add(member.pid)
+            if member_pid == f"{name}FF":
                 return member
-            if member.pid == f"{name}LAB":
-                self.found_member_pids.add(member.pid)
+            if member_pid == f"{name}LAB":
                 return member
-            if member.pid == f"{name}FG":
-                self.found_member_pids.add(member.pid)
+            if member_pid == f"{name}FG":
                 return member
-            if member.pid == f"{name}SF":
-                self.found_member_pids.add(member.pid)
+            if member_pid == f"{name}SF":
                 return member
-            if member.pid == f"Dr{name}":
-                self.found_member_pids.add(member.pid)
+            if member_pid == f"Dr{name}":
+                return member
+            if f'Ms{member_pid}' == name:
                 return member
 
         probable_members, probable_members_pids = self.get_probable_members(name[0])
 
         for member in probable_members:
-            if member.pid is None:
+            member_pid = member.pid
+
+            if member_pid is None:
                 continue
-            if member.pid in self.found_member_pids:
+            if len(set(member_pid).symmetric_difference(name)) > 2:
                 continue
-            if len(set(member.pid).symmetric_difference(name)) > 2:
-                continue
-            if edlib.align(member.pid, name)["editDistance"] < 4:
-                self.found_member_pids.add(member.pid)
+            if edlib.align(member_pid, name)["editDistance"] < 4:
                 return member
 
+        member_pid_used_set = set()
         for member in self.data:
-            if member.pid is None:
+            member_pid = member.pid
+            if member_pid in member_pid_used_set:
                 continue
-            if member.pid in probable_members_pids:
+            member_pid_used_set.add(member_pid)
+
+            if member_pid is None:
                 continue
-            if member.pid in self.found_member_pids:
+            if member_pid in probable_members_pids:
                 continue
-            if len(set(member.pid).symmetric_difference(name)) > 2:
+            if len(set(member_pid).symmetric_difference(name)) > 2:
                 continue
-            if edlib.align(member.pid, name)["editDistance"] < 4:
-                self.found_member_pids.add(member.pid)
+            if edlib.align(member_pid, name)["editDistance"] < 4:
                 return member
 
     @lru_cache(maxsize=10000)
