@@ -36,6 +36,7 @@ class Members:
                     self.data.append(Member(**d))
         self.loaded = True
 
+    @lru_cache(maxsize=10000)
     def get_member(self, member_str):
         if member_str.startswith("#"):
             return self.get_member_from_id(member_str)
@@ -169,6 +170,7 @@ class Member:
         "member_code",
         "_pid",
         "memberships",
+        "_set_pid",
     )
 
     def __init__(self, *args, **kwargs):
@@ -181,6 +183,7 @@ class Member:
         self.gender = kwargs.get("gender", kwargs.get("gender", None))
         self.member_code = kwargs.get("memberCode", kwargs.get("member_code", None))
         self._pid = kwargs.get("pId", kwargs.get("pid", None))
+        self._set_pid = None
 
         self.memberships = []
         for membership in kwargs["memberships"]:
@@ -191,10 +194,15 @@ class Member:
 
     @property
     def pid(self):
-        if isinstance(self._pid, str) and self._pid.startswith("#"):
-            return self._pid.replace("#", "")
+        if self._set_pid:
+            return self._set_pid
 
-        return self._pid
+        if isinstance(self._pid, str) and self._pid[0] == "#":
+            self._set_pid = self._pid.replace("#", "")
+            return self._set_pid
+
+        self._set_pid = self._pid
+        return self._set_pid
 
     def serialize(self):
         return {
