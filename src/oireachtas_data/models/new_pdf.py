@@ -298,6 +298,9 @@ class PDF:
             # if end is -1 and start is not, then there's only one thing on the list
             header_lines = [lines[start]]
         else:
+            # if there's content on the line before the start idx then it may be a run-on title
+            if lines[start - 1].strip():
+                start = start - 1
             header_lines = lines[start : end + 1]
 
         for header_line in header_lines:

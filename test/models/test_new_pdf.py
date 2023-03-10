@@ -192,7 +192,6 @@ class PDFTest(TestCase):
 
 
 class Test_de2016_06_27(TestCase):
-
     def setUp(self):
         self.resources_path = os.path.join(
             os.path.dirname(
@@ -208,7 +207,32 @@ class Test_de2016_06_27(TestCase):
 
         pdf = PDF(pdf_path)
 
+        self.assertEqual(len(pdf.debate_sections), 1)
+
+
+class Test_de2051_04_24(TestCase):
+    def setUp(self):
+        self.resources_path = os.path.join(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ),
+            "test/resources/pdfs",
+        )
+
+    def test_long_wrapping_section_headers(self):
+        pdf_path = os.path.join(
+            self.resources_path, "debate_Dáil Éireann_2015-04-24.pdf"
+        )
+
+        pdf = PDF(pdf_path)
+
+        """
+        Industrial Relations (Members of the Garda Síochána and the Defence Forces) Bill 2015: Second Stage [Private
+Members] ^H������������������������������������������������������������������������������������������������������������������������������������������������������������� 170
+        """
+        # gets picked up as one DS and its title is "Members]"
+
         self.assertEqual(
-            len(pdf.debate_sections),
-            1
+            pdf.debate_sections[0].title,
+            "Industrial Relations (Members of the Garda Síochána and the Defence Forces) Bill 2015: Second Stage [Private Members]",
         )
