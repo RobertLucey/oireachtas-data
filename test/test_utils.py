@@ -1,5 +1,6 @@
 from unittest import TestCase, skip
 
+from oireachtas_data.models.para import Para, Paras
 from oireachtas_data.utils import (
     merge_paras,
     get_file_content,
@@ -15,9 +16,29 @@ class UtilsTest(TestCase):
         self.assertEqual(find_nth("12321", "2", 0), 1)
         self.assertEqual(find_nth("12321", "2", 2), 3)
 
-    @skip("TODO")
-    def test_merge_paras(self):
-        pass
+    def test_merge_paras_list(self):
+        paras = [
+            Para.parse(dict(title="four", eid="five", content="six seven")),
+            Para.parse(dict(title="five", eid="six", content="eight nine")),
+        ]
+
+        merged = merge_paras(paras)
+
+        self.assertIsInstance(merged, Para)
+        self.assertEqual(merged.words, ["six", "seven", "eight", "nine"])
+
+    def test_merge_paras_paras(self):
+        paras = Paras(
+            data=[
+                Para.parse(dict(title="four", eid="five", content="six seven")),
+                Para.parse(dict(title="five", eid="six", content="eight nine")),
+            ]
+        )
+
+        merged = merge_paras(paras)
+
+        self.assertIsInstance(merged, Para)
+        self.assertEqual(merged.words, ["six", "seven", "eight", "nine"])
 
     @skip("TODO")
     def test_get_file_content(self):

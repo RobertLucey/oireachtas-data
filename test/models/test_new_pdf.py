@@ -76,7 +76,6 @@ Me: This should be ignored
         )
 
         self.assertEqual(len(section.speeches), 2)
-        print(section.speeches[0].serialize())
         self.assertEqual(
             section.speeches[0].serialize(),
             {
@@ -225,9 +224,7 @@ class Test_de2016_06_27(TestCase):
 
         self.assertEqual(
             [section.title for section in pdf.debate_sections],
-            [
-                "United Kingdom Referendum on European Union Membership: Statements"
-            ]
+            ["United Kingdom Referendum on European Union Membership: Statements"],
         )
 
 
@@ -257,6 +254,25 @@ Members] ^H�����������������������
             [section.title for section in pdf.debate_sections],
             [
                 "Industrial Relations (Members of the Garda Síochána and the Defence Forces) Bill 2015: Second Stage [Private Members]",
-                "Report on Land Use: Motion"
-            ]
+                "Report on Land Use: Motion",
+            ],
         )
+
+    def test_matching_header(self):
+        pdf_path = os.path.join(
+            self.resources_path, "debate_Dáil Éireann_2015-04-24.pdf"
+        )
+
+        pdf = PDF(pdf_path)
+        self.assertEqual(
+            pdf.matching_header("Report on Land Use: Motion"),
+            "Report on Land Use: Motion",
+        )
+        self.assertEqual(
+            pdf.matching_header("Report on Land Use Motion"),
+            "Report on Land Use: Motion",
+        )
+        self.assertEqual(
+            pdf.matching_header("Report on Land Use Mot"), "Report on Land Use: Motion"
+        )
+        self.assertEqual(pdf.matching_header("Blah blah"), None)

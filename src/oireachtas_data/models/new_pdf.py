@@ -55,7 +55,7 @@ class Section:
 
             else:
                 # This could be that the title down below is so long that it's split
-                print("oops, could not find the last section")
+                print("Oops, could not find the last section")
 
         else:
             if self.title not in content or self.next_title not in content:

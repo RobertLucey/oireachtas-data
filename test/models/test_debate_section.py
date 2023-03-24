@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import TestCase, skip
 
 from oireachtas_data.models.debate_section import DebateSection
 
@@ -65,3 +65,11 @@ class DebateSectionTest(TestCase):
                 "speeches": [],
             },
         )
+
+    @skip("todo")
+    def test_speech_contains(self):
+        pass
+
+    @skip("todo")
+    def test_load_data(self):
+        pass

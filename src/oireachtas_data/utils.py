@@ -25,6 +25,11 @@ def merge_paras(paras):
     :param paras:
     :return: A Para object that just merges all the paras you give it into one.
     """
+    from oireachtas_data.models.para import Paras
+
+    if isinstance(paras, Paras):
+        paras = paras.data
+
     return Para(content="\n\n".join([m.content for m in paras]))
 
 

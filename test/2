@@ -3,7 +3,7 @@
 import os
 import datetime
 
-from unittest import TestCase, skip
+from unittest import TestCase
 
 from oireachtas_data.models.old_pdf import PDF, Section, Page
 
@@ -81,9 +81,7 @@ class TestPage(TestCase):
 
 
 class TestSection(TestCase):
-    @skip("Use actual section")
     def test_content(self):
-        # TODO: get actual section content
         section = Section(
             data="\n\n2023-03-23\n\nSome title\n\nblah blah content",
             title="Something",
@@ -91,4 +89,3 @@ class TestSection(TestCase):
         )
 
         print(section.content)
-        raise Exception(section.content)

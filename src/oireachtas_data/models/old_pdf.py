@@ -9,6 +9,11 @@ import bs4
 from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
 
+import warnings
+from bs4 import MarkupResemblesLocatorWarning
+
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
+
 
 class Section:
     def __init__(self, data=None, title=None, date_string=None):

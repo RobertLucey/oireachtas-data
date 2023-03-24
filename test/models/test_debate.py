@@ -1,5 +1,6 @@
 import os
 import filecmp
+import datetime
 
 from unittest import TestCase, skip
 
@@ -205,3 +206,29 @@ class DebateTest(TestCase):
         )
 
         # TODO: assert the content in these speakers
+
+    def test_timestamp(self):
+        debate = Debate.parse(
+            {
+                "date": "2020-01-01",
+                "chamber": "Dáil Éireann",
+                "counts": {
+                    "questionCount": 21,
+                    "billCount": 15,
+                    "contributorCount": 146,
+                    "divisionCount": 12,
+                },
+                "sections": [],
+                "debate_type": "debate",
+                "data_uri": "https://blahblah1983he9183r9.com",
+            }
+        )
+        self.assertEqual(debate.timestamp, datetime.datetime(2020, 1, 1, 0, 0))
+
+    def test_json_location(self):
+        d1 = Debate()
+        d1.set_filepath('asd')
+        self.assertEqual(d1.json_location, 'asd')
+
+        d2 = Debate(chamber='one', date='two')
+        self.assertEqual(d2.json_location, '/opt/oireachtas_data/0/debates/debate_one_two.json')
