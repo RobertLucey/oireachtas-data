@@ -18,12 +18,7 @@ class Speech:
         self._as = _as
         self.eid = eid
 
-        if paras is not None and paras != []:
-            types = list(set([type(p) for p in paras]))
-            assert len(types) == 1
-            assert types[0] == Para
-
-        self.paras = paras if paras else []
+        self.paras = [para for para in paras if para.is_valid_para] if paras else []
 
     @property
     def by(self):
@@ -34,11 +29,13 @@ class Speech:
 
     @staticmethod
     def parse(data):
+        paras = [Para.parse(p) for p in data["paras"]]
+        paras = [para for para in paras if para.is_valid_para]
         return Speech(
             by=data["by"],
             _as=data["as"],
             eid=data["eid"],
-            paras=[Para.parse(p) for p in data["paras"]],
+            paras=paras,
         )
 
     def serialize(self):

@@ -1,5 +1,7 @@
 import os
 import datetime
+import warnings
+from bs4 import MarkupResemblesLocatorWarning
 from difflib import SequenceMatcher
 from collections import defaultdict
 
@@ -9,8 +11,8 @@ import bs4
 from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
 
-import warnings
-from bs4 import MarkupResemblesLocatorWarning
+from oireachtas_data import logger
+
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
@@ -142,7 +144,7 @@ class PDF:
             os.system(f"pdftohtml '{self.fp}'")
 
         if not os.path.exists(html_file):
-            print("Could not convert pdf to html: %s" % (html_file))
+            logger.error("Could not convert pdf to html: %s" % (html_file))
             self.loaded = True
             return
 

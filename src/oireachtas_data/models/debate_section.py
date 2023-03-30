@@ -7,6 +7,7 @@ from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
 from oireachtas_data.models.pdf import pdf_parser_get
 
+from oireachtas_data import logger
 
 pdf_cache = {}
 
@@ -78,6 +79,18 @@ class DebateSection:
             loaded=True,
         )
 
+    @property
+    def pdf_obj(self):
+        parser = pdf_parser_get(self.pdf_location)
+
+        if parser is None:
+            return None
+
+        if self.pdf_location not in pdf_cache:
+            pdf_cache[self.pdf_location] = parser(self.pdf_location)
+
+        return pdf_cache[self.pdf_location]
+
     def load_data(self):
         """
         Load data from the data_uri to populate the speeches and
@@ -92,15 +105,7 @@ class DebateSection:
             if str(ex) != "HTTP Error 403: Forbidden":
                 raise ex
             else:
-                parser = pdf_parser_get(self.pdf_location)
-
-                if parser is None:
-                    return
-
-                if self.pdf_location not in pdf_cache:
-                    pdf_cache[self.pdf_location] = parser(self.pdf_location)
-
-                pdf = pdf_cache[self.pdf_location]
+                pdf = self.pdf_obj
 
                 # Need to know what occurace of the show_as is, since there can be multiples
                 # will then need to get that one in the debate section
@@ -113,7 +118,7 @@ class DebateSection:
                 if matching_header is None:
                     # FIXME: may not be in debate sections, could just be on its own
                     # look if there's a line just containing the header
-                    print(f"Could not find {self.show_as} in {self.pdf_location}")
+                    logger.warning(f"Could not find \"{self.show_as}\" in {self.pdf_location}")
                 else:
                     # TODO: as sections are used, remove them as there can be multples, don't want to repeat
                     # can update the model since it's shared
@@ -127,7 +132,7 @@ class DebateSection:
                         ][0]
                         self.speeches.extend(section.speeches)
                     except IndexError:
-                        print(
+                        logger.warning(
                             'Could not get header "%s" from "%s"'
                             % (matching_header, pdf.fp)
                         )

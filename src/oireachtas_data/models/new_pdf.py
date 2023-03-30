@@ -9,6 +9,8 @@ from cached_property import cached_property
 from oireachtas_data.models.speech import Speech
 from oireachtas_data.models.para import Para
 
+from oireachtas_data import logger
+
 
 class Section:
     def __init__(self, data=None, title=None, next_title=None):
@@ -42,6 +44,8 @@ class Section:
         data = ""
 
         if self.next_title is None:
+            # This is the last section
+
             if self.title in content:
                 data = content[content.index(self.title) + len(self.title) + 1 :]
             elif self.title.rstrip(string.digits) in content:
@@ -55,7 +59,7 @@ class Section:
 
             else:
                 # This could be that the title down below is so long that it's split
-                print("Oops, could not find the last section")
+                logger.warning("Oops, could not find the last section")
 
         else:
             if self.title not in content or self.next_title not in content:
@@ -79,7 +83,7 @@ class Section:
 
                 if start_index is None:
                     # try remove numbers from the end of the title
-                    print(f"Could not get {self.title} from content")
+                    logger.warning(f"Could not get {self.title} from content")
                     return ""
 
                 if self.next_title not in content:
@@ -203,7 +207,7 @@ class PDF:
                 os.system(f"pdftotext '{self.fp}' '{text_file}'")
 
         if not os.path.exists(text_file):
-            print("Could not convert pdf to text: %s" % (text_file))
+            logger.error("Could not convert pdf to text: %s" % (text_file))
             return
 
         f = open(text_file, "r")
@@ -245,7 +249,7 @@ class PDF:
                 int(line[0])
                 datetime.datetime.strptime(line.strip(), "%d %B %Y")
                 good = False
-            except:
+            except Exception:
                 pass
 
             if line.strip() == "Dáil Éireann":

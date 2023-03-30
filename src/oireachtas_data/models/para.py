@@ -22,16 +22,16 @@ class Para:
 
     __slots__ = ("title", "eid", "content")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, title=None, eid=None, content=None):
         """
 
         :kwarg title: Sometimes a paragraph has a title, not often
         :kwarg eid: Incremented id of the paragraph
         :kwarg content: The str text content
         """
-        self.title = kwargs.get("title", None)
-        self.eid = kwargs.get("eid", None)
-        self.content = kwargs.get("content", None)
+        self.title = title
+        self.eid = eid
+        self.content = content
 
     @property
     def __dict__(self):
@@ -63,3 +63,7 @@ class Para:
 
     def serialize(self):
         return {"title": self.title, "eid": self.eid, "content": self.content}
+
+    @property
+    def is_valid_para(self):
+        return self.content not in ("Members rose.", "Members rose and applauded.")

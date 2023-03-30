@@ -8,6 +8,8 @@ import ujson
 from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.models.debate_section import DebateSection
 
+from oireachtas_data import logger
+
 
 class Debate:
     __slots__ = (
@@ -43,7 +45,7 @@ class Debate:
         self.date = date
         self.chamber = chamber
         self.counts = counts
-        self.debate_sections = debate_sections
+        self.debate_sections = debate_sections if debate_sections else []
         self.debate_type = debate_type
         self.data_uri = data_uri
 
@@ -82,6 +84,7 @@ class Debate:
             return
 
         if os.path.exists(self.json_location):
+            logger.debug(f'Loading debate from json file: {self.json_location}')
             from oireachtas_data.utils import get_file_content
 
             data = get_file_content(self.json_location)
@@ -97,6 +100,7 @@ class Debate:
                 "https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf"
                 % (chambers[self.chamber], self.date)
             )
+            logger.debug(f'Loading debate from pdf: {url}')
 
             pdf_request = requests.get(url, stream=True)
 

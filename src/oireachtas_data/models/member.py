@@ -44,12 +44,15 @@ class Members:
 
     @staticmethod
     def clean_name(name):
+
+        # TODO: Give back some options rather than a single name
+
         # If a minister is specified it usually looks like:
         # Minister for Something (Deputy Joan Malone)
         if "Minister" in name:
             try:
                 name = re.findall("\((.*?)\)", name)[0]
-            except:
+            except Exception:
                 pass
 
         name = name.replace(")", "")
@@ -72,6 +75,7 @@ class Members:
 
     @lru_cache(maxsize=100)
     def get_probable_members(self, starting_char):
+        # if starting_char is longer than a char then deal with it
         probable_members = [
             m for m in self.data if m.pid is not None and m.pid[0] == starting_char
         ]
@@ -84,9 +88,15 @@ class Members:
         # FIXME: Any near duplicate names should be noted.
         # if there's a number at the end we need to be very careful
 
+        # FIXME: If middle names are included we may need to remove the middle name. Example: Deputy Mary Alexandra White
+
+        if name and name[0].islower():
+            # Fairly confident it's not a valid name. Look into better parsing
+            return
+
         name = self.clean_name(name)
 
-        if name == "":
+        if not name:
             return
 
         member_pid_used_set = set()
@@ -98,19 +108,19 @@ class Members:
 
             if member_pid is None:
                 continue
-            if member_pid == name:
+            elif member_pid == name:
                 return member
-            if member_pid == f"{name}FF":
+            elif member_pid == f"{name}FF":
                 return member
-            if member_pid == f"{name}LAB":
+            elif member_pid == f"{name}LAB":
                 return member
-            if member_pid == f"{name}FG":
+            elif member_pid == f"{name}FG":
                 return member
-            if member_pid == f"{name}SF":
+            elif member_pid == f"{name}SF":
                 return member
-            if member_pid == f"Dr{name}":
+            elif member_pid == f"Dr{name}":
                 return member
-            if f"Ms{member_pid}" == name:
+            elif f"Ms{member_pid}" == name:
                 return member
 
         probable_members, probable_members_pids = self.get_probable_members(name[0])
@@ -120,9 +130,9 @@ class Members:
 
             if member_pid is None:
                 continue
-            if len(set(member_pid).symmetric_difference(name)) > 2:
+            elif len(set(member_pid).symmetric_difference(name)) > 2:
                 continue
-            if edlib.align(member_pid, name)["editDistance"] < 4:
+            elif edlib.align(member_pid, name)["editDistance"] < 4:
                 return member
 
         member_pid_used_set = set()
@@ -134,11 +144,11 @@ class Members:
 
             if member_pid is None:
                 continue
-            if member_pid in probable_members_pids:
+            elif member_pid in probable_members_pids:
                 continue
-            if len(set(member_pid).symmetric_difference(name)) > 2:
+            elif len(set(member_pid).symmetric_difference(name)) > 2:
                 continue
-            if edlib.align(member_pid, name)["editDistance"] < 4:
+            elif edlib.align(member_pid, name)["editDistance"] < 4:
                 return member
 
     @lru_cache(maxsize=10000)
@@ -200,7 +210,7 @@ class Member:
         if self._set_pid:
             return self._set_pid
 
-        if isinstance(self._pid, str) and self._pid[0] == "#":
+        if self._pid and self._pid[0] == "#":
             self._set_pid = self._pid.replace("#", "")
             return self._set_pid
 

@@ -3,6 +3,8 @@ import os
 from oireachtas_data.models.new_pdf import PDF as NEW_PDF
 from oireachtas_data.models.old_pdf import PDF as OLD_PDF
 
+from oireachtas_data import logger
+
 
 def to_text(fp):
     text_file = fp + ".txt"
@@ -12,7 +14,7 @@ def to_text(fp):
             os.system(f"pdftotext '{fp}' '{text_file}'")
 
     if not os.path.exists(text_file):
-        print("Could not convert pdf to text: %s" % (text_file))
+        logger.error("Could not convert pdf to text: %s" % (text_file))
         return
 
     f = open(text_file, "r")
@@ -26,7 +28,7 @@ def pdf_parser_get(pdf_location):
     content = to_text(pdf_location)
 
     if content is None:
-        print("Could not parse pdf type: %s" % (pdf_location))
+        logger.error("Could not parse pdf type: %s" % (pdf_location))
         return
 
     if "��������������" in content:
