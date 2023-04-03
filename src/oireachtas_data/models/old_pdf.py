@@ -17,6 +17,35 @@ from oireachtas_data import logger
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 
+def merge_split_speaker_lines(splits):
+    """
+    Merge lines that were split with member names
+    For example:
+
+    Deupty something something something (First name
+    Second name): Hello
+    """
+    mergers = []
+    for idx, line in enumerate(splits):
+        if (
+            ")" in line
+            and "(" in splits[idx - 1]
+            and (line.find(")") < line.find("(") or line.find("(") == -1)
+            and splits[idx - 1].rfind(")") < splits[idx - 1].rfind("(")
+        ):
+            mergers.append(idx)
+
+    for idx, merger in enumerate(mergers):
+        merger_alt = merger - idx
+        splits = (
+            splits[0 : merger_alt - 1]
+            + [" ".join(splits[merger_alt - 1 : merger_alt + 1])]
+            + splits[merger_alt + 1 :]
+        )
+
+    return splits
+
+
 class Section:
     def __init__(self, data=None, title=None, date_string=None):
         self.date_string = date_string
@@ -50,8 +79,13 @@ class Section:
                 # TODO: check that idx + 2 is always correct
                 split = split[0 : idx - 4] + split[idx + 2 :]
 
-        # TODO: need to join broken sentences
+        split = merge_split_speaker_lines(split)
+
         # TODO: need to remove [NAME] casue that's a page break
+
+        # NOTE : not always there, in questions it's [person] asked the [someone] but it's not speaking so may be good to leave out. Shouldn't be included in other people's speech though (which it isn't)
+        #    only in questions so can only do there?
+        #   it goes {number}. [name] asked [someone]
 
         final = []
 
@@ -80,6 +114,13 @@ class Section:
         lines = self.content.split("\n")
         for line in lines:
             if ":" not in line:
+                continue
+
+            try:
+                if line[line.find(next(filter(str.isalpha, line)))].islower():
+                    continue
+            except StopIteration:
+                # no alphanum
                 continue
 
             person = line[: line.index(":")]
