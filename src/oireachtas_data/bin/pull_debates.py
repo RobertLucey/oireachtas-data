@@ -13,13 +13,18 @@ from oireachtas_data.models.debate import Debate
 from oireachtas_data.constants import DEBATES_DIR
 from oireachtas_data.utils import get_debates
 
+from oireachtas_data import logger
+
 
 def scrape_debates(d):
+    if int(d.date.split("-")[0]) < 2008:
+        logger.error("No parser for files older than 2008 so not pulling data")
+        return
     try:
         d.load_data()
         d.write()
-    except:
-        print("Possibly wrong pdf parsed: %s - %s" % (d.date, d.chamber))
+    except Exception:
+        logger.warning("Possibly wrong pdf parsed: %s - %s" % (d.date, d.chamber))
 
 
 def main():
@@ -34,7 +39,7 @@ def main():
     chamber_types = ["house", "committee"]
     try:
         earliest = min([d.timestamp for d in get_debates()])
-    except:
+    except Exception:
         earliest = datetime.datetime.now()
 
     # There are a lot of access denieds, should look here for missing data
@@ -54,7 +59,7 @@ def main():
             ).strftime("%Y-%m-%d")
             limit = 1000
 
-            print(
+            logger.info(
                 "Get debates of config: %s"
                 % (
                     {
@@ -75,8 +80,6 @@ def main():
             )
             response = urlopen(req)
             data = ujson.loads(response.read())
-
-            print("got debates: %s" % (len(data["results"])))
 
             debates = []
             for d in data["results"]:
