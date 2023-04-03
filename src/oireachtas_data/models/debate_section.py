@@ -99,8 +99,11 @@ class DebateSection:
         if self.loaded:
             return
 
+        use_pdf = True
+
         try:
             source = urlopen(self.data_uri)
+            use_pdf = False
         except (Exception, urllib.error.HTTPError) as ex:
             if str(ex) != "HTTP Error 403: Forbidden":
                 raise ex
@@ -167,6 +170,9 @@ class DebateSection:
 
         self.loaded = True
 
+        if use_pdf:
+            logger.debug('Needed to get pdf to parse "{self.show_as}": {self.pdf_location}')
+
     def serialize(self):
         return {
             "bill": self.bill,
@@ -199,7 +205,9 @@ class DebateSection:
 
     @property
     def is_from_pdf(self):
-        return self.debate_type is None
+        any_eid = [speech for speech in self.speeches if speech.eid] != []
+        has_content = [speech for speech in self.speeches if speech.content] != []
+        return any_eid and has_content
 
     @property
     def is_empty(self):
