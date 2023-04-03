@@ -84,7 +84,7 @@ class Debate:
             return
 
         if os.path.exists(self.json_location):
-            logger.debug(f'Loading debate from json file: {self.json_location}')
+            logger.debug(f"Loading debate from json file: {self.json_location}")
             from oireachtas_data.utils import get_file_content
 
             data = get_file_content(self.json_location)
@@ -100,7 +100,7 @@ class Debate:
                 "https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf"
                 % (chambers[self.chamber], self.date)
             )
-            logger.debug(f'Loading debate from pdf: {url}')
+            logger.debug(f"Loading debate from pdf: {url}")
 
             pdf_request = requests.get(url, stream=True)
 

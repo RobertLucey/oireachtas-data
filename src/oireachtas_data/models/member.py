@@ -44,7 +44,6 @@ class Members:
 
     @staticmethod
     def clean_name(name):
-
         # TODO: Give back some options rather than a single name
 
         # If a minister is specified it usually looks like:

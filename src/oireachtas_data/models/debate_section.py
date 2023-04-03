@@ -121,7 +121,9 @@ class DebateSection:
                 if matching_header is None:
                     # FIXME: may not be in debate sections, could just be on its own
                     # look if there's a line just containing the header
-                    logger.warning(f"Could not find \"{self.show_as}\" in {self.pdf_location}")
+                    logger.warning(
+                        f'Could not find "{self.show_as}" in {self.pdf_location}'
+                    )
                 else:
                     # TODO: as sections are used, remove them as there can be multples, don't want to repeat
                     # can update the model since it's shared
@@ -171,7 +173,9 @@ class DebateSection:
         self.loaded = True
 
         if use_pdf:
-            logger.debug('Needed to get pdf to parse "{self.show_as}": {self.pdf_location}')
+            logger.debug(
+                'Needed to get pdf to parse "{self.show_as}": {self.pdf_location}'
+            )
 
     def serialize(self):
         return {
