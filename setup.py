@@ -17,7 +17,7 @@ INSTALL_REQUIRES = (
 
 setup(
     name='oireachtas-data',
-    version='0.1.16',
+    version='0.1.17',
     python_requires='>=3.6',
     description='Oireachtas debate data',
     long_description='Oireachtas debate data',
