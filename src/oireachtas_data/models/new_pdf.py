@@ -272,9 +272,21 @@ class PDF:
         self.data = "\n".join(good_lines)
 
     def matching_header(self, show_as):
+        scores = []
         for header in self.section_headers:
-            if SequenceMatcher(None, header, show_as).ratio() > 0.8:
+            if header == show_as:
                 return header
+
+            score = SequenceMatcher(None, header, show_as).ratio()
+            if SequenceMatcher(None, header, show_as).ratio() > 0.8:
+                scores.append({'score': score, 'header': header})
+
+        scores = sorted(scores, key=lambda x: x['score'], reverse=True)
+
+        if scores:
+            if scores[0]['score'] > 0.8:
+                return scores[0]['header']
+
         return None
 
     @property

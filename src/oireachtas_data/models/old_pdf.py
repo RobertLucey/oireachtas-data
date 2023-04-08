@@ -231,12 +231,23 @@ class PDF:
 
         # TODO: factor in removed ones
 
+        scores = []
         for header in self.possibles:
-            if (
-                SequenceMatcher(None, header.text.replace(space, " "), show_as).ratio()
-                > 0.6
-            ):
-                return header.text.replace(space, " ")
+
+            header = header.text.replace(space, " ")
+
+            if header == show_as:
+                return header
+
+            score = SequenceMatcher(None, header, show_as).ratio()
+            if SequenceMatcher(None, header, show_as).ratio() > 0.8:
+                scores.append({'score': score, 'header': header})
+
+        scores = sorted(scores, key=lambda x: x['score'], reverse=True)
+
+        if scores:
+            if scores[0]['score'] > 0.8:
+                return scores[0]['header']
 
         return None
 
