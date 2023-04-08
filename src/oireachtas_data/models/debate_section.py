@@ -142,40 +142,39 @@ class DebateSection:
                             % (matching_header, pdf.fp)
                         )
 
-                return
+        else:
+            soup = bs4.BeautifulSoup(source, "html.parser")
 
-        soup = bs4.BeautifulSoup(source, "html.parser")
+            # heading
+            # soup.find('debatesection').find('heading').text
 
-        # heading
-        # soup.find('debatesection').find('heading').text
+            for speech in soup.find("debatesection").find_all("speech"):
+                paras = [
+                    Para(
+                        title=p.attrs.get("title", None),
+                        eid=p.attrs.get("eid", None),
+                        content=p.text,
+                    )
+                    for p in speech.find_all("p")
+                ]
 
-        for speech in soup.find("debatesection").find_all("speech"):
-            paras = [
-                Para(
-                    title=p.attrs.get("title", None),
-                    eid=p.attrs.get("eid", None),
-                    content=p.text,
+                self.speeches.append(
+                    Speech(
+                        by=speech.attrs.get("by"),
+                        _as=speech.attrs.get("as"),
+                        eid=speech.attrs.get("eid"),
+                        paras=paras,
+                    )
                 )
-                for p in speech.find_all("p")
-            ]
 
-            self.speeches.append(
-                Speech(
-                    by=speech.attrs.get("by"),
-                    _as=speech.attrs.get("as"),
-                    eid=speech.attrs.get("eid"),
-                    paras=paras,
+            # Could also get summary
+
+            self.loaded = True
+
+            if use_pdf:
+                logger.debug(
+                    'Needed to get pdf to parse "{self.show_as}": {self.pdf_location}'
                 )
-            )
-
-        # Could also get summary
-
-        self.loaded = True
-
-        if use_pdf:
-            logger.debug(
-                'Needed to get pdf to parse "{self.show_as}": {self.pdf_location}'
-            )
 
     def serialize(self):
         return {
