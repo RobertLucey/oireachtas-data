@@ -3,9 +3,7 @@ import pprint
 import os
 from collections import Counter, defaultdict
 
-import edlib
-
-from oireachtas_data.utils import get_debates
+from oireachtas_data.utils import get_debates, get_duplicate_sections_of_debate
 
 from oireachtas_data import logger
 
@@ -33,35 +31,6 @@ def pdf_parsed_data(debate):
         logger.warning(f"{debate.json_location}: {section.show_as}")
         data["section_names"].append(section.show_as)
         data["location"].append(os.path.basename(debate.json_location))
-    return data
-
-
-def duplicate_sections(debate):
-    data = defaultdict(list)
-
-    sections_content = {}
-
-    for section in debate.debate_sections:
-        if section.content and len(section.content) > 100:
-            key = f"{section.show_as}___{section.debate_section_id}"
-            sections_content[key] = section.content
-
-    for section in debate.debate_sections:
-        key = f"{section.show_as}___{section.debate_section_id}"
-        if section.content and len(section.content) > 100:
-            for cmp_key, cmp_section_content in sections_content.items():
-                if key == cmp_key:
-                    continue
-                if abs(len(section.content) - len(cmp_section_content)) > 500:
-                    # Big diff in size, carry on
-                    continue
-                if (
-                    edlib.align(section.content, cmp_section_content)["editDistance"]
-                    < 100
-                ):
-                    data["matches"].append((key, cmp_key))
-                    print(f"{debate.json_location}: {key} ~= {cmp_key}")
-
     return data
 
 
@@ -96,7 +65,7 @@ def main():
             if debate_data:
                 data.append(debate_data)
         elif args.duplicate_sections:
-            debate_data = duplicate_sections(debate)
+            debate_data = get_duplicate_sections_of_debate(debate)
             if debate_data:
                 data.append(debate_data)
         else:
