@@ -233,7 +233,6 @@ class PDF:
 
         scores = []
         for header in self.possibles:
-
             header = header.text.replace(space, " ")
 
             if header == show_as:
@@ -241,13 +240,13 @@ class PDF:
 
             score = SequenceMatcher(None, header, show_as).ratio()
             if SequenceMatcher(None, header, show_as).ratio() > 0.8:
-                scores.append({'score': score, 'header': header})
+                scores.append({"score": score, "header": header})
 
-        scores = sorted(scores, key=lambda x: x['score'], reverse=True)
+        scores = sorted(scores, key=lambda x: x["score"], reverse=True)
 
         if scores:
-            if scores[0]['score'] > 0.8:
-                return scores[0]['header']
+            if scores[0]["score"] > 0.8:
+                return scores[0]["header"]
 
         return None
 
