@@ -311,5 +311,5 @@ class DebateTest(TestCase):
         self.assertEqual([
             speech['by'] for speech in questionable_section.serialize()['speeches']
         ], [
-            "Minister of State at the Department of Enterprise; Trade and Innovation (Deputy Dara Calleary)", "Minister of State at the Department of Enterprise; Trade and Innovation (Deputy Dara Calleary)"
+            "Minister of State at the Department of Enterprise, Trade and Innovation (Deputy Dara Calleary)"
         ])
