@@ -133,6 +133,8 @@ class Debate:
                     ],
                     speakers=raw_debate_section["speakers"],
                     pdf_location=pdf_location,
+                    debate_sections_context=self.debate_sections,
+                    debate_section_idx=idx,
                 )
                 debate_section.load_data()
                 debate_sections.append(debate_section)

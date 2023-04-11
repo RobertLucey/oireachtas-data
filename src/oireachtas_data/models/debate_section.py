@@ -28,6 +28,8 @@ class DebateSection:
         "speeches",
         "pdf_location",
         "loaded",
+        "debate_sections_context",
+        "debate_section_idx",
     )
 
     def __init__(
@@ -46,6 +48,8 @@ class DebateSection:
         speeches=None,
         pdf_location=None,
         loaded=False,
+        debate_sections_context=None,
+        debate_section_idx=None,
     ):
         self.bill = bill
         self.contains_debate = contains_debate
@@ -59,6 +63,9 @@ class DebateSection:
         self.show_as_context = show_as_context
         self.speakers = speakers
         self.speeches = speeches if speeches else []
+
+        self.debate_sections_context = debate_sections_context
+        self.debate_section_idx = debate_section_idx
 
         self.pdf_location = pdf_location
         self.loaded = loaded
@@ -128,19 +135,46 @@ class DebateSection:
                     # TODO: as sections are used, remove them as there can be multples, don't want to repeat
                     # can update the model since it's shared
 
-                    try:
-                        section = [
-                            s
-                            for s in pdf.debate_sections
-                            if s.title.lower().strip()
-                            == matching_header.lower().strip()
-                        ][0]
-                        self.speeches.extend(section.speeches)
-                    except IndexError:
-                        logger.warning(
-                            'Could not get header "%s" from "%s"'
-                            % (matching_header, pdf.fp)
-                        )
+                    context = self.debate_sections_context
+                    idx = self.debate_section_idx
+                    pre_show_as = [c["debateSection"]["showAs"] for c in context[:idx]]
+                    post_show_as = [c["debateSection"]["showAs"] for c in context[idx:]]
+
+                    if (
+                        matching_header in pre_show_as
+                        and matching_header in post_show_as
+                        and matching_header == context[idx]["debateSection"]["showAs"]
+                    ):
+                        # count which instance of this it is, then instead of getting the first, get the nth of that name
+                        try:
+                            section = [
+                                s
+                                for s in pdf.debate_sections
+                                if s.title.lower().strip()
+                                == matching_header.lower().strip()
+                            ][pre_show_as.count(matching_header)]
+                            self.speeches.extend(section.speeches)
+                        except IndexError:
+                            logger.warning(
+                                'Could not get header "%s" from "%s"'
+                                % (matching_header, pdf.fp)
+                            )
+
+                    else:
+                        # Just get the first and carry on since it's the first time coming across
+                        try:
+                            section = [
+                                s
+                                for s in pdf.debate_sections
+                                if s.title.lower().strip()
+                                == matching_header.lower().strip()
+                            ][0]
+                            self.speeches.extend(section.speeches)
+                        except IndexError:
+                            logger.warning(
+                                'Could not get header "%s" from "%s"'
+                                % (matching_header, pdf.fp)
+                            )
 
         else:
             soup = bs4.BeautifulSoup(source, "html.parser")
