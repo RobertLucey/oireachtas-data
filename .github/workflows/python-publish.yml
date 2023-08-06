@@ -29,7 +29,7 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DTESTDATADIR=$PWD/testfiles -DENABLE_UNSTABLE_API_ABI_HEADERS=ON -DENABLE_BOOST=OFF ..
         make
         sudo make install
-        sudo apt-get install python3-dev pdftohtml
+        sudo apt-get install python3-dev
         python -m pip install --upgrade pip
         python -m pip install virtualenv
     - name: Test
