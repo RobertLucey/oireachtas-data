@@ -47,7 +47,17 @@ jobs:
         python-version: '3.x'
     - name: Install dependencies
       run: |
-        sudo apt-get install make build-essential poppler-utils pkg-config python3-dev pdftohtml
+        sudo apt-get install make build-essential pkg-config
+        sudo apt-get install libopenjp2-7-dev
+        wget https://poppler.freedesktop.org/poppler-23.08.0.tar.xz
+        tar -xvf poppler-23.08.0.tar.xz
+        cd poppler-23.08.0
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DTESTDATADIR=$PWD/testfiles -DENABLE_UNSTABLE_API_ABI_HEADERS=ON -DENABLE_BOOST=OFF ..
+        make
+        sudo make install
+        sudo apt-get install python3-dev
         python -m pip install --upgrade pip
         python -m pip install virtualenv
     - name: Build package
