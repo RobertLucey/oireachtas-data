@@ -46,13 +46,17 @@ class ParaTest(TestCase):
 
     def test_remove_interruptions(self):
         self.assertEqual(
-            Para(title="four", eid="five", content="blah blah----  (Interruptions).").content,
-            'blah blah.',
+            Para(
+                title="four", eid="five", content="blah blah----  (Interruptions)."
+            ).content,
+            "blah blah.",
         )
 
     def test_is_valid_para(self):
         self.assertTrue(
-            Para(title="four", eid="five", content="blah blah----  (Interruptions).").is_valid_para
+            Para(
+                title="four", eid="five", content="blah blah----  (Interruptions)."
+            ).is_valid_para
         )
 
         self.assertFalse(

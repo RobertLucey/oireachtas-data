@@ -24,12 +24,12 @@ class DebateTest(TestCase):
         self.resources_json_path = os.path.join(self.resources_path, "json")
 
         import shutil
+
         shutil.rmtree(BASE_DIR)
         os.makedirs(BASE_DIR, exist_ok=True)
         os.makedirs(OIREACHTAS_DIR, exist_ok=True)
         os.makedirs(DEBATES_DIR, exist_ok=True)
         os.makedirs(MEMBERS_DIR, exist_ok=True)
-
 
         import requests
         from oireachtas_data.models.member import Members, Member
@@ -44,8 +44,6 @@ class DebateTest(TestCase):
                 member = Member(**result["member"])
                 members.append(member)
         members.write()
-
-
 
     def test_parse(self):
         os.makedirs(OIREACHTAS_DIR, exist_ok=True)
@@ -306,10 +304,13 @@ class DebateTest(TestCase):
 
         debate_sections = debate.debate_sections
 
-        questionable_section = [d for d in debate_sections if d.debate_section_id == 'dbsect_138'][0]
+        questionable_section = [
+            d for d in debate_sections if d.debate_section_id == "dbsect_138"
+        ][0]
 
-        self.assertEqual([
-            speech['by'] for speech in questionable_section.serialize()['speeches']
-        ], [
-            "Minister of State at the Department of Enterprise, Trade and Innovation (Deputy Dara Calleary)"
-        ])
+        self.assertEqual(
+            [speech["by"] for speech in questionable_section.serialize()["speeches"]],
+            [
+                "Minister of State at the Department of Enterprise, Trade and Innovation (Deputy Dara Calleary)"
+            ],
+        )
