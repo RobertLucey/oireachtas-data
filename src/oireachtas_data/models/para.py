@@ -8,6 +8,10 @@ from nltk.tag.perceptron import PerceptronTagger
 TAGGER = PerceptronTagger()
 
 
+def clean_content(data):
+    return data.replace("----  (Interruptions)", "")
+
+
 class Paras:
     def __init__(self, data=None):
         self.data = data
@@ -31,7 +35,7 @@ class Para:
         """
         self.title = title
         self.eid = eid
-        self.content = content
+        self.content = clean_content(content)
 
     @property
     def __dict__(self):

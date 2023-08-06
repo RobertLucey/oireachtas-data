@@ -98,6 +98,9 @@ class DebateSection:
 
         return pdf_cache[self.pdf_location]
 
+    def get_soup_from_uri(self, uri):
+        return urlopen(self.data_uri)
+
     def load_data(self):
         """
         Load data from the data_uri to populate the speeches and
@@ -109,7 +112,8 @@ class DebateSection:
         use_pdf = True
 
         try:
-            source = urlopen(self.data_uri)
+            source = self.get_data_from_uri(self.data_uri)
+            soup = bs4.BeautifulSoup(source, "html.parser")
             use_pdf = False
         except (Exception, urllib.error.HTTPError) as ex:
             if str(ex) != "HTTP Error 403: Forbidden":
@@ -177,8 +181,6 @@ class DebateSection:
                             )
 
         else:
-            soup = bs4.BeautifulSoup(source, "html.parser")
-
             # heading
             # soup.find('debatesection').find('heading').text
 
