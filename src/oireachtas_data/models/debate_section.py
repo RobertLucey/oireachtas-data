@@ -98,7 +98,7 @@ class DebateSection:
 
         return pdf_cache[self.pdf_location]
 
-    def get_soup_from_uri(self, uri):
+    def get_data_from_uri(self, uri):
         return urlopen(self.data_uri)
 
     def load_data(self):
