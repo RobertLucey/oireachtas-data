@@ -12,7 +12,7 @@ class ParasTest(TestCase):
 
 
 class ParaTest(TestCase):
-    def test_hash(self):
+    def test_contenthash(self):
         self.assertEqual(
             Para.parse(
                 dict(title="four", eid="five", content="six seven")
@@ -42,4 +42,19 @@ class ParaTest(TestCase):
         self.assertEqual(
             Para(title="four", eid="five", content="six seven").tokens,
             [("six", "CD"), ("seven", "CD")],
+        )
+
+    def test_remove_interruptions(self):
+        self.assertEqual(
+            Para(title="four", eid="five", content="blah blah----  (Interruptions).").content,
+            'blah blah.',
+        )
+
+    def test_is_valid_para(self):
+        self.assertTrue(
+            Para(title="four", eid="five", content="blah blah----  (Interruptions).").is_valid_para
+        )
+
+        self.assertFalse(
+            Para(title="four", eid="five", content="Members rose.").is_valid_para
         )
