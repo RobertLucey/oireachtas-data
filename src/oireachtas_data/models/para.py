@@ -9,7 +9,12 @@ TAGGER = PerceptronTagger()
 
 
 def clean_content(data):
-    return data.replace("----  (Interruptions)", "")
+    content = data.replace("----  (Interruptions)", "").strip()
+
+    while "  " in content:
+        content = content.replace("  ", " ")
+
+    return content
 
 
 class Paras:
@@ -24,7 +29,7 @@ class Para:
     Inherits from Text which has all the text analysis bits
     """
 
-    __slots__ = ("title", "eid", "content")
+    __slots__ = ("title", "eid", "_content")
 
     def __init__(self, title=None, eid=None, content=None):
         """
@@ -35,7 +40,11 @@ class Para:
         """
         self.title = title
         self.eid = eid
-        self.content = clean_content(content)
+        self._content = content
+
+    @property
+    def content(self):
+        return clean_content(self._content)
 
     @property
     def __dict__(self):

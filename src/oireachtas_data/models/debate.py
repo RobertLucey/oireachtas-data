@@ -58,8 +58,6 @@ class Debate:
 
     @staticmethod
     def from_file(filepath):
-        from oireachtas_data.utils import get_file_content
-
         debate = Debate()
         debate.set_filepath(filepath)
         return debate
