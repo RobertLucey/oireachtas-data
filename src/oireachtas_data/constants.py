@@ -1,5 +1,5 @@
 import os
-import pkg_resources
+from importlib.metadata import version
 
 BASE_DIR = (
     "/tmp/oireachtas_data"
@@ -15,7 +15,7 @@ os.makedirs(BASE_DIR, exist_ok=True)
 
 OIREACHTAS_DIR = os.path.join(
     BASE_DIR,
-    pkg_resources.require("oireachtas_data")[0].version.split(".")[0],
+    version("oireachtas-data").split(".")[0],
 )
 os.makedirs(OIREACHTAS_DIR, exist_ok=True)
 

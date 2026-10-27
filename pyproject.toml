@@ -7,7 +7,7 @@ name = "oireachtas-data"
 version = "0.2.0"
 description = "Oireachtas debate data"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 authors = [{ name = "Robert Lucey" }]
 dependencies = [
     "ujson",
