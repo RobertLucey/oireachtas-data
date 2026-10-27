@@ -9,7 +9,7 @@ from oireachtas_data import logger
 
 
 def missing_debate_sections(debate):
-    # This may be due to not being able to find in the pdf or that there's just no content that is present
+    # Report sections with no speakers or speeches.
     # TODO: give stats on section by count of missing
     data = defaultdict(list)
     empty_debate_sections = [
@@ -22,25 +22,10 @@ def missing_debate_sections(debate):
     return data
 
 
-def pdf_parsed_data(debate):
-    # To go through and see if there's any weirdness since non pdf should be trusted
-
-    data = defaultdict(list)
-    from_pdf = [section for section in debate.debate_sections if section.is_from_pdf]
-    for section in from_pdf:
-        logger.warning(f"{debate.json_location}: {section.show_as}")
-        data["section_names"].append(section.show_as)
-        data["location"].append(os.path.basename(debate.json_location))
-    return data
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--missing-debate-sections", dest="missing_debate_sections", action="store_true"
-    )
-    parser.add_argument(
-        "--pdf-parsed-data", dest="pdf_parsed_data", action="store_true"
     )
     parser.add_argument(
         "--duplicate-sections", dest="duplicate_sections", action="store_true"
@@ -53,15 +38,10 @@ def main():
         debate.load_data()
 
         # TODO: Check for duplicate debate sections in the same json file
-        # TODO: The ratio diff between text from json and text from pdf, if we're missing a lot
         # What about duplicate debate secion names? Is that dangerous?
 
         if args.missing_debate_sections:
             debate_data = missing_debate_sections(debate)
-            if debate_data:
-                data.append(debate_data)
-        elif args.pdf_parsed_data:
-            debate_data = pdf_parsed_data(debate)
             if debate_data:
                 data.append(debate_data)
         elif args.duplicate_sections:
@@ -72,7 +52,7 @@ def main():
             logger.error("Select something to analyse")
 
     # simple counts
-    if args.missing_debate_sections or args.pdf_parsed_data:
+    if args.missing_debate_sections:
         if data:
             for k in data[0].keys():
                 print(k.title())

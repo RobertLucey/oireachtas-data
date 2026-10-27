@@ -1,6 +1,5 @@
 import os
 import datetime
-import requests
 from collections import defaultdict
 
 import ujson
@@ -93,51 +92,7 @@ class Debate:
             self.debate_type = data["debate_type"]
             self.data_uri = data["data_uri"]
         else:
-            chambers = {"Dáil Éireann": "dail", "Seanad Éireann": "seanad"}
-            url = (
-                "https://data.oireachtas.ie/ie/oireachtas/debateRecord/%s/%s/debate/mul@/main.pdf"
-                % (chambers[self.chamber], self.date)
-            )
-            logger.debug(f"Loading debate from pdf: {url}")
-
-            pdf_request = requests.get(url, stream=True)
-
-            # not self.pdf_location as recursive error
-            pdf_location = os.path.join(
-                DEBATES_DIR, "%s_%s_%s.pdf" % ("debate", self.chamber, self.date)
-            )
-
-            with open(pdf_location, "wb") as pdfile:
-                for chunk in pdf_request.iter_content(2000):
-                    pdfile.write(chunk)
-
-            # If we're missing data from the api cause of being forbidden we can get some data from the pdf
-
-            debate_sections = []
-            for idx, section in enumerate(self.debate_sections):
-                raw_debate_section = section["debateSection"]
-                debate_section = DebateSection(
-                    bill=raw_debate_section["bill"],
-                    contains_debate=raw_debate_section["containsDebate"],
-                    counts=raw_debate_section["counts"],
-                    debate_section_id=raw_debate_section["debateSectionId"],
-                    debate_type=raw_debate_section["debateType"],
-                    data_uri=raw_debate_section["formats"]["xml"]["uri"],
-                    parent_debate_section=raw_debate_section["parentDebateSection"],
-                    show_as=raw_debate_section["showAs"],
-                    show_as_idx=idx,
-                    show_as_context=[
-                        d["debateSection"]["showAs"] for d in self.debate_sections
-                    ],
-                    speakers=raw_debate_section["speakers"],
-                    pdf_location=pdf_location,
-                    debate_sections_context=self.debate_sections,
-                    debate_section_idx=idx,
-                )
-                debate_section.load_data()
-                debate_sections.append(debate_section)
-
-            self.debate_sections = debate_sections
+            raise FileNotFoundError(self.json_location)
 
         self.loaded = True
 

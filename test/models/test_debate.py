@@ -20,7 +20,6 @@ class DebateTest(TestCase):
             "test/resources/",
         )
 
-        self.resources_pdf_path = os.path.join(self.resources_path, "pdfs")
         self.resources_json_path = os.path.join(self.resources_path, "json")
 
         import shutil

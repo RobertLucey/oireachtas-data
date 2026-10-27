@@ -2,9 +2,14 @@ import os
 import pkg_resources
 
 BASE_DIR = (
-    "/opt/oireachtas_data"
-    if os.getenv("TEST_ENV", "False") == "False"
-    else "/tmp/oireachtas_data"
+    "/tmp/oireachtas_data"
+    if os.getenv("TEST_ENV", "False") != "False"
+    else os.path.expanduser(
+        os.getenv(
+            "OIREACHTAS_DATA_DIR",
+            os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "oireachtas_data"),
+        )
+    )
 )
 os.makedirs(BASE_DIR, exist_ok=True)
 
@@ -21,7 +26,7 @@ MEMBERS_DIR = os.path.join(OIREACHTAS_DIR, "members")
 os.makedirs(MEMBERS_DIR, exist_ok=True)
 
 LOG_LOCATION = (
-    "/var/log/oireachtas_data/oireachtas_data.log"
-    if os.getenv("TEST_ENV", "False") == "False"
-    else "/tmp/test_oireachtas_data.log"
+    "/tmp/test_oireachtas_data.log"
+    if os.getenv("TEST_ENV", "False") != "False"
+    else os.path.join(OIREACHTAS_DIR, "oireachtas_data.log")
 )

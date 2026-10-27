@@ -1,11 +1,22 @@
 import hashlib
+from functools import lru_cache
 
 from cached_property import cached_property
 
 import nltk
 from nltk.tag.perceptron import PerceptronTagger
 
-TAGGER = PerceptronTagger()
+from oireachtas_data.nltk_resources import ensure_resource
+
+_NEW_NLTK_DATA = tuple(int(part) for part in nltk.__version__.split(".")[:2]) >= (3, 9)
+_TAGGER_PACKAGE = "averaged_perceptron_tagger_eng" if _NEW_NLTK_DATA else "averaged_perceptron_tagger"
+_PUNKT_PACKAGE = "punkt_tab" if _NEW_NLTK_DATA else "punkt"
+
+
+@lru_cache(maxsize=1)
+def get_tagger():
+    ensure_resource(_TAGGER_PACKAGE, "taggers/" + _TAGGER_PACKAGE + "/")
+    return PerceptronTagger()
 
 
 def clean_content(data):
@@ -60,6 +71,12 @@ class Para:
 
         :return: A list of nltk tokenized words
         """
+        resource = (
+            "tokenizers/punkt_tab/english/"
+            if _NEW_NLTK_DATA
+            else "tokenizers/punkt/english.pickle"
+        )
+        ensure_resource(_PUNKT_PACKAGE, resource)
         return nltk.word_tokenize(self.content)
 
     @cached_property
@@ -68,7 +85,7 @@ class Para:
 
         :reuturn: A list of nltk tokenized words with their tag
         """
-        return TAGGER.tag(self.words)
+        return get_tagger().tag(self.words)
 
     @property
     def content_hash(self):

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oireachtas-data"
+version = "0.2.0"
+description = "Oireachtas debate data"
+readme = "README.md"
+requires-python = ">=3.6"
+authors = [{ name = "Robert Lucey" }]
+dependencies = [
+    "ujson",
+    "requests",
+    "cached_property",
+    "bs4",
+    "nltk",
+    "unidecode",
+    "edlib",
+]
+
+[project.optional-dependencies]
+dev = ["mock", "pytest", "coverage", "build"]
+
+[project.urls]
+Homepage = "https://github.com/RobertLucey/oireachtas-data"
+
+[project.scripts]
+oireachtas_download = "oireachtas_data.bin.download_all:main"
+oireachtas_load_debates = "oireachtas_data.bin.load_debates:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
