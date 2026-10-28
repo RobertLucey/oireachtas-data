@@ -1,234 +1,32 @@
-import os
-import filecmp
 import datetime
-
-from unittest import TestCase, skip
+from pathlib import Path
 
 from oireachtas_data.models.debate import Debate
-from oireachtas_data.constants import DEBATES_DIR
+from oireachtas_data.models.debate_section import DebateSection
+from oireachtas_data.models.para import Para
+from oireachtas_data.models.speech import Speech
 
 
-class DebateTest(TestCase):
-    def setUp(self):
-        self.resources_path = os.path.join(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            ),
-            "test/resources/",
-        )
+def test_debate_model_contains_archive_data_and_nested_models():
+    paragraph = Para(eid="para_1", content="Hello world.")
+    speech = Speech(by="#ExampleSpeaker", eid="spk_1", paras=[paragraph])
+    section = DebateSection(show_as="Opening", speeches=[speech])
+    pdf = Path("reports/debate.pdf")
+    metadata = {"contextDate": "2026-10-22"}
+    debate = Debate(
+        date="2026-10-22",
+        chamber="Dáil Éireann",
+        debate_sections=[section],
+        metadata=metadata,
+        files={"pdf": pdf},
+        uri="https://data.oireachtas.ie/debate/1",
+        text="Hello world.",
+    )
 
-        self.resources_json_path = os.path.join(self.resources_path, "json")
-
-    def test_parse(self):
-        self.assertEqual(
-            Debate.parse(
-                {
-                    "date": "2020-01-01",
-                    "chamber": "Dáil Éireann",
-                    "counts": {
-                        "questionCount": 21,
-                        "billCount": 15,
-                        "contributorCount": 146,
-                        "divisionCount": 12,
-                    },
-                    "sections": [],
-                    "debate_type": "debate",
-                    "data_uri": "https://blahblah1983he9183r9.com",
-                }
-            ).serialize(),
-            {
-                "chamber": "Dáil Éireann",
-                "counts": {
-                    "billCount": 15,
-                    "contributorCount": 146,
-                    "divisionCount": 12,
-                    "questionCount": 21,
-                },
-                "data_uri": "https://blahblah1983he9183r9.com",
-                "date": "2020-01-01",
-                "debate_type": "debate",
-                "sections": [],
-            },
-        )
-
-    @skip("Failing on CI but passing locally")
-    def test_serialize(self):
-        self.assertEqual(
-            Debate(
-                date="2020-01-01",
-                chamber="Dáil Éireann",
-                counts={
-                    "questionCount": 21,
-                    "billCount": 15,
-                    "contributorCount": 146,
-                    "divisionCount": 12,
-                },
-                debate_sections=[],
-                debate_type="debate",
-                data_uri="https://blahblah1983he9183r9.com",
-            ).serialize(),
-            {
-                "chamber": "Dáil Éireann",
-                "counts": {
-                    "billCount": 15,
-                    "contributorCount": 146,
-                    "divisionCount": 12,
-                    "questionCount": 21,
-                },
-                "data_uri": "https://blahblah1983he9183r9.com",
-                "date": "2020-01-01",
-                "debate_type": "debate",
-                "sections": [],
-            },
-        )
-
-    def test_set_filepath(self):
-        debate = Debate(
-            date="2020-01-01",
-            chamber="Dáil Éireann",
-            counts={
-                "questionCount": 21,
-                "billCount": 15,
-                "contributorCount": 146,
-                "divisionCount": 12,
-            },
-            debate_sections=[],
-            debate_type="debate",
-            data_uri="https://blahblah1983he9183r9.com",
-        )
-        self.assertEqual(debate._json_location, None)
-        debate.set_filepath("/path/to/something")
-        self.assertEqual(debate._json_location, "/path/to/something")
-
-    def test_from_file(self):
-        debate = Debate.from_file(
-            os.path.join(
-                self.resources_json_path, "debate_Dáil Éireann_2016-05-25.json"
-            )
-        )
-        self.assertEqual(debate.serialize()["chamber"], "Dáil Éireann")
-        # TODO: make sure more is asserted, this just makes sure something is loaded in
-
-    def test_write(self):
-        debate = Debate.from_file(
-            os.path.join(
-                self.resources_json_path, "debate_Dáil Éireann_2016-05-25.json"
-            )
-        )
-        debate.write(location="/tmp/debate.json")
-
-        self.assertTrue(
-            filecmp.cmp(
-                os.path.join(
-                    self.resources_json_path, "debate_Dáil Éireann_2016-05-25.json"
-                ),
-                debate._json_location,
-            )
-        )
-
-    def test_pdf_location(self):
-        debate = Debate.from_file(
-            os.path.join(
-                self.resources_json_path, "debate_Dáil Éireann_2016-05-25.json"
-            )
-        )
-        self.assertEqual(
-            debate.pdf_location,
-            os.path.join(DEBATES_DIR, "debate_Dáil Éireann_2016-05-25.pdf"),
-        )
-
-    def test_content_by_speaker(self):
-        debate = Debate.from_file(
-            os.path.join(
-                self.resources_json_path, "debate_Dáil Éireann_2016-05-25.json"
-            )
-        )
-        self.assertEqual(
-            list(debate.content_by_speaker.keys()),
-            [
-                "SeanOFearghaillFF",
-                "MichaelMartin",
-                "EndaKenny",
-                "GerryAdams",
-                "WillieODea",
-                "BrendanHowlin",
-                "RoisinShortall",
-                "RichardBoydBarrett",
-                "ThomasByrne",
-                "DannyHealyRae",
-                "LouiseOReilly",
-                "DavidCullinane",
-                "MattieMcGrath",
-                "MaryLouMcDonald",
-                "JoanCollins",
-                "SeanCroweSF",
-                "SeanSherlock",
-                "RuthCoppinger",
-                "BridSmith",
-                "CaoimhglinOCaolain",
-                "JimOCallaghan",
-                "SeamusHealy",
-                "LeoVaradkar",
-                "JohnBrady",
-                "WilliamPenrose",
-                "FinianMcGrath",
-                "FrankORourke",
-                "MickWallace",
-                "NiamhSmyth",
-                "DavidStanton",
-                "AlanFarrell",
-                "FrancesFitzgerald",
-                "JonathanOBrien",
-                "MickBarry",
-                "JohnLahart",
-                "ClareDaly",
-                "RobertTroy",
-                "GinoKenny",
-                "MichaelFitzmaurice",
-                "EoinOBroin",
-                "ThomasPringle",
-                "StephenDonnelly",
-                "PearseDoherty",
-                "PatBuckley",
-                "DonnchadhOLaoghaire",
-                "DessieEllis",
-                "ImeldaMunster",
-                "PaschalDonohoe",
-                "TonyMcLoughlin",
-                "BernardJDurkan",
-                "MichaelWDArcy",
-                "DamienEnglishFG",
-                "SimonCoveney",
-                "TimDooley",
-            ],
-        )
-
-        # TODO: assert the content in these speakers
-
-    def test_timestamp(self):
-        debate = Debate.parse(
-            {
-                "date": "2020-01-01",
-                "chamber": "Dáil Éireann",
-                "counts": {
-                    "questionCount": 21,
-                    "billCount": 15,
-                    "contributorCount": 146,
-                    "divisionCount": 12,
-                },
-                "sections": [],
-                "debate_type": "debate",
-                "data_uri": "https://blahblah1983he9183r9.com",
-            }
-        )
-        self.assertEqual(debate.timestamp, datetime.datetime(2020, 1, 1, 0, 0))
-
-    def test_json_location(self):
-        d1 = Debate()
-        d1.set_filepath("asd")
-        self.assertEqual(d1.json_location, "asd")
-
-        d2 = Debate(chamber="one", date="two")
-        self.assertEqual(
-            d2.json_location, os.path.join(DEBATES_DIR, "debate_one_two.json")
-        )
+    assert debate.metadata is metadata
+    assert debate.files["pdf"] == pdf
+    assert debate.pdf_location == pdf
+    assert debate.text == "Hello world."
+    assert debate.timestamp == datetime.datetime(2026, 10, 22)
+    assert debate.content_by_speaker["ExampleSpeaker"] == [paragraph]
+    assert debate.serialize()["sections"][0]["speeches"][0]["paras"][0]["content"] == "Hello world."

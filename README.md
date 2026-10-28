@@ -23,3 +23,15 @@ export OIREACHTAS_DATA_DIR="$PWD/data/oireachtas"
 oireachtas_download
 oireachtas_load_debates
 ```
+
+In Python, use the same archive and model objects:
+
+```python
+from oireachtas_data.archive import DownloadedDebates
+
+debates = DownloadedDebates()
+debate = debates[0]  # Debate containing DebateSection, Speech, and Para objects
+print(debate.date, debate.debate_sections[0].show_as)
+```
+
+Early reports can contain summaries instead of speeches. Read them through `debate.debate_sections[0].summaries`, or use the section's `content` for its text.

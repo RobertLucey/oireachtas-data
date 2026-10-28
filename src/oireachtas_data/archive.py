@@ -17,12 +17,23 @@ def _name(element):
     return element.tag.rsplit("}", 1)[-1]
 
 
+def _text(element):
+    return " ".join("".join(element.itertext()).split())
+
+
+def _summary(element):
+    return Para(
+        eid=element.get("eId") or element.get("eid"),
+        content=_text(element),
+    )
+
+
 def _speech(element):
     paragraphs = [
         Para(
             title=paragraph.get("title"),
             eid=paragraph.get("eId") or paragraph.get("eid"),
-            content="".join(paragraph.itertext()),
+            content=_text(paragraph),
         )
         for paragraph in element.iter()
         if _name(paragraph) == "p"
@@ -35,7 +46,7 @@ def _speech(element):
     )
 
 
-def _section(metadata, element, speeches, pdf_path):
+def _section(metadata, element, speeches, summaries, content_items, pdf_path):
     formats = metadata.get("formats") or {}
     xml_format = formats.get("xml") or {}
     heading = (
@@ -44,7 +55,7 @@ def _section(metadata, element, speeches, pdf_path):
         else None
     )
     show_as = metadata.get("showAs") or (
-        "".join(heading.itertext()) if heading is not None else "Untitled"
+        _text(heading) if heading is not None else "Untitled"
     )
     section_id = metadata.get("debateSectionId") or (
         element.get("eId") if element is not None else None
@@ -60,83 +71,107 @@ def _section(metadata, element, speeches, pdf_path):
         show_as=show_as,
         speakers=metadata.get("speakers") or [],
         speeches=speeches,
+        summaries=summaries,
+        content_items=content_items,
         pdf_location=pdf_path,
-        loaded=True,
     )
 
 
-class DownloadedDebate(Debate):
-    __slots__ = ("metadata", "files", "uri", "_text")
+def debate_from_record(metadata, files):
+    """Build the single Debate model from saved API metadata and report XML."""
+    record = metadata.get("debateRecord") or {}
+    xml_path = files.get("xml")
+    root = ElementTree.parse(xml_path).getroot() if xml_path is not None else None
+    text = _text(root) if root is not None else None
 
-    def __init__(self, metadata, files):
-        self.metadata = metadata
-        record = metadata.get("debateRecord") or {}
-        self.uri = record.get("uri")
-        self.files = files
-        xml_path = files.get("xml")
-        root = ElementTree.parse(xml_path).getroot() if xml_path is not None else None
-        self._text = " ".join(root.itertext()) if root is not None else None
-
-        xml_sections = {}
-        section_order = []
-        speeches_by_section = defaultdict(list)
-        unsectioned_speeches = []
-        if root is not None:
-            parents = {child: parent for parent in root.iter() for child in parent}
-            for element in root.iter():
-                if _name(element) == "debateSection":
-                    xml_sections[element.get("eId") or element.get("eid")] = element
-                    section_order.append(element)
-                elif _name(element) == "speech":
-                    parent = parents.get(element)
-                    while parent is not None and _name(parent) != "debateSection":
-                        parent = parents.get(parent)
-                    if parent is not None:
-                        speeches_by_section[parent].append(_speech(element))
+    xml_sections = {}
+    section_order = []
+    speeches_by_section = defaultdict(list)
+    summaries_by_section = defaultdict(list)
+    items_by_section = defaultdict(list)
+    unsectioned_speeches = []
+    unsectioned_summaries = []
+    unsectioned_items = []
+    if root is not None:
+        parents = {child: parent for parent in root.iter() for child in parent}
+        for element in root.iter():
+            if _name(element) == "debateSection":
+                xml_sections[element.get("eId") or element.get("eid")] = element
+                section_order.append(element)
+            elif _name(element) in ("speech", "summary"):
+                parent = parents.get(element)
+                while parent is not None and _name(parent) != "debateSection":
+                    parent = parents.get(parent)
+                item = _speech(element) if _name(element) == "speech" else _summary(element)
+                if parent is not None:
+                    if _name(element) == "speech":
+                        speeches_by_section[parent].append(item)
                     else:
-                        unsectioned_speeches.append(_speech(element))
+                        summaries_by_section[parent].append(item)
+                    items_by_section[parent].append(item)
+                else:
+                    if _name(element) == "speech":
+                        unsectioned_speeches.append(item)
+                    else:
+                        unsectioned_summaries.append(item)
+                    unsectioned_items.append(item)
 
-        sections = []
-        used_xml_sections = set()
-        pdf_path = files.get("pdf") or files.get("writtens_pdf")
-        for item in record.get("debateSections") or []:
-            section_metadata = item.get("debateSection") or {}
-            element = xml_sections.get(section_metadata.get("debateSectionId"))
-            if element is not None:
-                used_xml_sections.add(element)
-            sections.append(
-                _section(section_metadata, element, speeches_by_section.get(element, []), pdf_path)
+    sections = []
+    used_xml_sections = set()
+    pdf_path = files.get("pdf") or files.get("writtens_pdf")
+    for item in record.get("debateSections") or []:
+        section_metadata = item.get("debateSection") or {}
+        element = xml_sections.get(section_metadata.get("debateSectionId"))
+        if element is not None:
+            used_xml_sections.add(element)
+        sections.append(
+            _section(
+                section_metadata,
+                element,
+                speeches_by_section.get(element, []),
+                summaries_by_section.get(element, []),
+                items_by_section.get(element, []),
+                pdf_path,
             )
-        for element in section_order:
-            if element not in used_xml_sections:
-                sections.append(
-                    _section({}, element, speeches_by_section.get(element, []), pdf_path)
+        )
+    for element in section_order:
+        if element not in used_xml_sections:
+            sections.append(
+                _section(
+                    {},
+                    element,
+                    speeches_by_section.get(element, []),
+                    summaries_by_section.get(element, []),
+                    items_by_section.get(element, []),
+                    pdf_path,
                 )
-        if unsectioned_speeches:
-            sections.append(
-                _section({"showAs": "Unsectioned"}, None, unsectioned_speeches, pdf_path)
             )
-
-        formats = record.get("formats") or {}
-        xml_format = formats.get("xml") or {}
-        super().__init__(
-            date=metadata.get("contextDate") or record.get("date"),
-            chamber=(record.get("chamber") or {}).get("showAs"),
-            counts=record.get("counts"),
-            debate_sections=sections,
-            debate_type=record.get("debateType"),
-            data_uri=xml_format.get("uri"),
-            loaded=True,
+    if unsectioned_items:
+        sections.append(
+            _section(
+                {"showAs": "Unsectioned"},
+                None,
+                unsectioned_speeches,
+                unsectioned_summaries,
+                unsectioned_items,
+                pdf_path,
+            )
         )
 
-    @property
-    def text(self):
-        """Plain text from the downloaded report XML, when one is available."""
-        return self._text
-
-    @property
-    def pdf_location(self):
-        return self.files.get("pdf") or self.files.get("writtens_pdf")
+    formats = record.get("formats") or {}
+    xml_format = formats.get("xml") or {}
+    return Debate(
+        date=metadata.get("contextDate") or record.get("date"),
+        chamber=(record.get("chamber") or {}).get("showAs"),
+        counts=record.get("counts"),
+        debate_sections=sections,
+        debate_type=record.get("debateType"),
+        data_uri=xml_format.get("uri"),
+        metadata=metadata,
+        files=files,
+        uri=record.get("uri"),
+        text=text,
+    )
 
 
 class DownloadedDebates:
@@ -175,7 +210,7 @@ class DownloadedDebates:
     @lru_cache(maxsize=16)
     def _item(self, position):
         page_path, offset, files = self._entries[position]
-        return DownloadedDebate(self._page(page_path)[offset], files)
+        return debate_from_record(self._page(page_path)[offset], files)
 
     def __iter__(self):
         for position in range(len(self)):

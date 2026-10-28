@@ -1,14 +1,10 @@
-import os
-import pickle
 from itertools import islice
 from collections import defaultdict
 
 import edlib
-import ujson
 
 from oireachtas_data import logger
-from oireachtas_data.constants import DEBATES_DIR
-from oireachtas_data.models.debate import Debate
+from oireachtas_data.archive import DownloadedDebates
 from oireachtas_data.models.para import Para
 
 
@@ -36,42 +32,14 @@ def merge_paras(paras):
     return Para(content="\n\n".join([m.content for m in paras]))
 
 
-def get_file_content(filepath):
-    """
-    Read a file regardless of the extension
-
-    For instance if there's some pickle files and some pickle.bz files
-    this will give back the same data as if they were not compressed
-
-    :param filepath: Filepath to read from
-    :return: Depending on the ext it may be a pickled obj / str
-    """
-    ext = os.path.splitext(filepath)[1]
-    if ext == ".txt":
-        return open(filepath, "r").read()
-    elif ext == ".json":
-        f = open(filepath, "r")
-        data = ujson.loads(f.read())
-        f.close()
-        return data
-    elif ext == ".pickle":
-        return pickle.load(open(filepath, "rb"))
-    else:
-        raise NotImplementedError()
+def iter_debates(archive_dir=None):
+    """Iterate over debates from the downloaded archive."""
+    return iter(DownloadedDebates(archive_dir))
 
 
-def iter_debates():
-    for f in os.listdir(DEBATES_DIR):
-        if f.endswith(".json"):
-            yield Debate.from_file(os.path.join(DEBATES_DIR, f))
-
-
-def get_debates():
-    debates = []
-    for f in os.listdir(DEBATES_DIR):
-        if f.endswith(".json"):
-            debates.append(Debate.from_file(os.path.join(DEBATES_DIR, f)))
-    return debates
+def get_debates(archive_dir=None):
+    """Return debates from the downloaded archive as a list."""
+    return list(iter_debates(archive_dir))
 
 
 def window(sequence, window_size=2):
@@ -148,6 +116,6 @@ def get_duplicate_sections_of_debate(debate):
                     data["matches"].append((key, cmp_key))
                     skip.append(f"{key}___{cmp_key}")
                     skip.append(f"{cmp_key}___{key}")
-                    logger.warning(f"{debate.json_location}: {key} ~= {cmp_key}")
+                    logger.warning(f"{debate.uri or debate.date}: {key} ~= {cmp_key}")
 
     return data

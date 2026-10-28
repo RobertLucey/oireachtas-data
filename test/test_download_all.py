@@ -8,12 +8,13 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from oireachtas_data.archive import DownloadedDebate, DownloadedDebates, get_downloaded_debates
+from oireachtas_data.archive import DownloadedDebates, debate_from_record, get_downloaded_debates
 from oireachtas_data.bin import download_all
 from oireachtas_data.models.debate import Debate
 from oireachtas_data.models.debate_section import DebateSection
 from oireachtas_data.models.para import Para
 from oireachtas_data.models.speech import Speech
+from oireachtas_data.utils import get_debates, iter_debates
 
 
 
@@ -55,7 +56,10 @@ def test_full_download_paginates_and_resumes():
         assert set(index[0]["files"]) == {"xml", "pdf"}
         debates = get_downloaded_debates(output / "archive")
         assert len(debates) == 1
+        assert type(debates[0]) is Debate
         assert debates[0].text == "report contents"
+        assert [debate.date for debate in get_debates(output / "archive")] == ["2026-10-22"]
+        assert [debate.date for debate in iter_debates(output / "archive")] == ["2026-10-22"]
         lazy_debates = DownloadedDebates(output / "archive")
         assert len(lazy_debates) == 1
         assert lazy_debates[0].date == "2026-10-22"
@@ -143,6 +147,7 @@ def test_archive_xml_builds_debate_speech_and_para_models():
       <debate><debateBody>
         <debateSection eId="dbsect_1"><heading>Opening</heading>
           <speech eId="spk_1" by="#First"><p eId="para_1">Hello <i>world</i>.</p></speech>
+          <summary eId="sum_1">A decision followed.</summary>
           <debateSection eId="dbsect_2"><heading>Questions</heading>
             <speech eId="spk_2" by="#Second"><p eId="para_2">Another speech.</p></speech>
           </debateSection>
@@ -159,9 +164,9 @@ def test_archive_xml_builds_debate_speech_and_para_models():
     with tempfile.TemporaryDirectory() as temporary:
         path = Path(temporary) / "debate.xml"
         path.write_text(xml)
-        debate = DownloadedDebate(metadata, {"xml": path})
+        debate = debate_from_record(metadata, {"xml": path})
 
-    assert isinstance(debate, Debate)
+    assert type(debate) is Debate
     assert len(debate.debate_sections) == 2
     first, second = debate.debate_sections
     assert isinstance(first, DebateSection)
@@ -170,3 +175,34 @@ def test_archive_xml_builds_debate_speech_and_para_models():
     assert first.speeches[0].paras[0].content == "Hello world."
     assert len(first.speeches) == len(second.speeches) == 1
     assert second.speeches[0].by == "Second"
+    assert first.content == "First: Hello world.\nA decision followed."
+    assert first.summaries[0].eid == "sum_1"
+    assert second.summaries == []
+
+
+def test_archive_summaries_fill_sections_without_speeches():
+    xml = """<akomaNtoso><debate><debateBody>
+      <debateSection eId="dbsect_1"><heading>Prelude</heading>
+        <summary eId="sum_1">The House assembled at 12.30 p.m.</summary>
+        <summary eId="sum_2">The <i>Roll</i> was called.</summary>
+      </debateSection>
+    </debateBody></debate></akomaNtoso>"""
+    metadata = {"contextDate": "1919-01-22", "debateRecord": {
+        "debateSections": [{"debateSection": {
+            "debateSectionId": "dbsect_1", "showAs": "Prelude",
+        }}],
+    }}
+    with tempfile.TemporaryDirectory() as temporary:
+        path = Path(temporary) / "debate.xml"
+        path.write_text(xml)
+        debate = debate_from_record(metadata, {"xml": path})
+
+    section = debate.debate_sections[0]
+    assert section.speeches == []
+    assert [summary.content for summary in section.summaries] == [
+        "The House assembled at 12.30 p.m.",
+        "The Roll was called.",
+    ]
+    assert section.content == "The House assembled at 12.30 p.m.\nThe Roll was called."
+    assert "\n" not in debate.text
+    assert "Prelude The House assembled" in debate.text

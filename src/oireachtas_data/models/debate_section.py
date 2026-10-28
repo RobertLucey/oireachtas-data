@@ -1,9 +1,6 @@
-from urllib.request import urlopen
-
-import bs4
+"""A section of a downloaded debate."""
 
 from oireachtas_data.models.speech import Speech
-from oireachtas_data.models.para import Para
 
 
 class DebateSection:
@@ -18,8 +15,9 @@ class DebateSection:
         "show_as",
         "speakers",
         "speeches",
+        "summaries",
+        "content_items",
         "pdf_location",
-        "loaded",
     )
 
     def __init__(
@@ -34,8 +32,9 @@ class DebateSection:
         show_as=None,
         speakers=None,
         speeches=None,
+        summaries=None,
+        content_items=None,
         pdf_location=None,
-        loaded=False,
     ):
         self.bill = bill
         self.contains_debate = contains_debate
@@ -44,63 +43,14 @@ class DebateSection:
         self.debate_type = debate_type
         self.data_uri = data_uri
         self.parent_debate_section = parent_debate_section
-        self.show_as = show_as.strip()
-        self.speakers = speakers
-        self.speeches = speeches if speeches else []
-
-        self.pdf_location = pdf_location
-        self.loaded = loaded
-
-    @staticmethod
-    def parse(data):
-        return DebateSection(
-            bill=data["bill"],
-            contains_debate=data["contains_debate"],
-            counts=data["counts"],
-            debate_section_id=data["debate_section_id"],
-            debate_type=data["debate_type"],
-            data_uri=data["data_uri"],
-            parent_debate_section=data["parent_debate_section"],
-            show_as=data["show_as"],
-            speakers=data["speakers"],
-            speeches=[Speech.parse(s) for s in data["speeches"]],
-            loaded=True,
+        self.show_as = (show_as or "").strip()
+        self.speakers = speakers if speakers is not None else []
+        self.speeches = speeches if speeches is not None else []
+        self.summaries = summaries if summaries is not None else []
+        self.content_items = (
+            content_items if content_items is not None else self.summaries + self.speeches
         )
-
-    def get_data_from_uri(self, uri):
-        return urlopen(uri)
-
-    def load_data(self):
-        """
-        Load data from the data_uri to populate the speeches and
-        their paragraphs
-        """
-        if self.loaded:
-            return
-
-        source = self.get_data_from_uri(self.data_uri)
-        soup = bs4.BeautifulSoup(source, "html.parser")
-        section = soup.find("debatesection")
-        if section is None:
-            raise ValueError("No debate section in " + str(self.data_uri))
-        for speech in section.find_all("speech"):
-            paras = [
-                Para(
-                    title=p.attrs.get("title"),
-                    eid=p.attrs.get("eid"),
-                    content=p.text,
-                )
-                for p in speech.find_all("p")
-            ]
-            self.speeches.append(
-                Speech(
-                    by=speech.attrs.get("by"),
-                    _as=speech.attrs.get("as"),
-                    eid=speech.attrs.get("eid"),
-                    paras=paras,
-                )
-            )
-        self.loaded = True
+        self.pdf_location = pdf_location
 
     def serialize(self):
         return {
@@ -113,34 +63,32 @@ class DebateSection:
             "parent_debate_section": self.parent_debate_section,
             "show_as": self.show_as,
             "speakers": self.speakers,
-            "speeches": [s.serialize() for s in self.speeches],
+            "speeches": [speech.serialize() for speech in self.speeches],
+            "summaries": [summary.serialize() for summary in self.summaries],
         }
 
     def speech_contains(self, substr, case_sensitive=True):
-        content = ""
-        for speech in self.speeches:
-            content += "\n" + speech.content
-
-        if case_sensitive:
-            return substr in content
-        else:
+        content = "\n".join(speech.content for speech in self.speeches)
+        if not case_sensitive:
             return substr.lower() in content.lower()
+        return substr in content
 
     @property
     def content(self):
-        return "\n".join(
-            ["\n" + speech.by + ": " + speech.content for speech in self.speeches]
-        )
+        parts = []
+        for item in self.content_items:
+            if isinstance(item, Speech):
+                content = item.content.strip()
+                if content:
+                    parts.append((str(item.by) + ": " if item.by else "") + content)
+            elif item.content:
+                parts.append(item.content)
+        return "\n".join(parts)
 
     @property
     def is_empty(self):
-        # this can happen when there's access denied errors
-        return self.speakers == [] and self.speeches == []
+        return not self.speakers and not self.speeches and not self.summaries
 
     @property
     def computed_speakers(self):
-        speakers = set()
-        for speech in self.speeches:
-            speakers.add(speech.by)
-
-        return speakers
+        return {speech.by for speech in self.speeches}

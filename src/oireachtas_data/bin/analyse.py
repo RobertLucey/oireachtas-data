@@ -1,9 +1,9 @@
 import argparse
 import pprint
-import os
 from collections import Counter, defaultdict
 
-from oireachtas_data.utils import get_debates, get_duplicate_sections_of_debate
+from oireachtas_data.archive import DownloadedDebates
+from oireachtas_data.utils import get_duplicate_sections_of_debate
 
 from oireachtas_data import logger
 
@@ -16,9 +16,9 @@ def missing_debate_sections(debate):
         section for section in debate.debate_sections if section.is_empty
     ]
     for section in empty_debate_sections:
-        logger.warning(f"{debate.json_location}: {section.show_as}")
+        logger.warning(f"{debate.uri or debate.date}: {section.show_as}")
         data["missing_section_names"].append(section.show_as)
-        data["location"].append(os.path.basename(debate.json_location))
+        data["location"].append(debate.date)
     return data
 
 
@@ -33,13 +33,8 @@ def main():
     args = parser.parse_args()
 
     data = []
-    debates = get_debates()
+    debates = DownloadedDebates()
     for debate in debates:
-        debate.load_data()
-
-        # TODO: Check for duplicate debate sections in the same json file
-        # What about duplicate debate secion names? Is that dangerous?
-
         if args.missing_debate_sections:
             debate_data = missing_debate_sections(debate)
             if debate_data:

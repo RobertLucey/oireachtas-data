@@ -1,71 +1,15 @@
-from unittest import TestCase, skip
-
 from oireachtas_data.models.debate_section import DebateSection
+from oireachtas_data.models.para import Para
+from oireachtas_data.models.speech import Speech
 
 
-class DebateSectionTest(TestCase):
-    def test_parse(self):
-        self.assertEqual(
-            DebateSection.parse(
-                {
-                    "bill": None,
-                    "contains_debate": True,
-                    "counts": {"speakerCount": 1, "speechCount": 1},
-                    "debate_section_id": "dbsect_11",
-                    "debate_type": "debate",
-                    "data_uri": "https://something123919230192.com",
-                    "parent_debate_section": None,
-                    "show_as": "something",
-                    "speakers": [],
-                    "speeches": [],
-                    "loaded": False,
-                }
-            ).serialize(),
-            {
-                "bill": None,
-                "contains_debate": True,
-                "counts": {"speakerCount": 1, "speechCount": 1},
-                "data_uri": "https://something123919230192.com",
-                "debate_section_id": "dbsect_11",
-                "debate_type": "debate",
-                "parent_debate_section": None,
-                "show_as": "something",
-                "speakers": [],
-                "speeches": [],
-            },
-        )
+def test_section_serializes_and_searches_speeches():
+    speech = Speech(by="#ExampleSpeaker", paras=[Para(content="Hello world.")])
+    section = DebateSection(show_as="  Opening  ", speeches=[speech])
 
-    def test_serialize(self):
-        self.assertEqual(
-            DebateSection(
-                **{
-                    "bill": None,
-                    "contains_debate": True,
-                    "counts": {"speakerCount": 1, "speechCount": 1},
-                    "debate_section_id": "dbsect_11",
-                    "debate_type": "debate",
-                    "data_uri": "https://something123919230192.com",
-                    "parent_debate_section": None,
-                    "show_as": "something",
-                    "speakers": [],
-                    "speeches": [],
-                    "loaded": False,
-                }
-            ).serialize(),
-            {
-                "bill": None,
-                "contains_debate": True,
-                "counts": {"speakerCount": 1, "speechCount": 1},
-                "data_uri": "https://something123919230192.com",
-                "debate_section_id": "dbsect_11",
-                "debate_type": "debate",
-                "parent_debate_section": None,
-                "show_as": "something",
-                "speakers": [],
-                "speeches": [],
-            },
-        )
-
-    @skip("todo")
-    def test_speech_contains(self):
-        pass
+    assert section.show_as == "Opening"
+    assert section.computed_speakers == {"ExampleSpeaker"}
+    assert section.speech_contains("hello world", case_sensitive=False)
+    assert not section.speech_contains("hello world")
+    assert not section.is_empty
+    assert section.serialize()["speeches"][0]["paras"][0]["content"] == "Hello world."

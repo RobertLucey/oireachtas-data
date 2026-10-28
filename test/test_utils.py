@@ -1,10 +1,8 @@
-from unittest import TestCase, skip
+from unittest import TestCase
 
 from oireachtas_data.models.para import Para, Paras
 from oireachtas_data.utils import (
     merge_paras,
-    get_file_content,
-    get_debates,
     window,
     first_occuring,
     find_nth,
@@ -39,14 +37,6 @@ class UtilsTest(TestCase):
 
         self.assertIsInstance(merged, Para)
         self.assertEqual(merged.words, ["six", "seven", "eight", "nine"])
-
-    @skip("TODO")
-    def test_get_file_content(self):
-        pass
-
-    @skip("TODO")
-    def test_get_debates(self):
-        pass
 
     def test_window(self):
         self.assertEqual(
