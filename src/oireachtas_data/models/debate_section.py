@@ -48,7 +48,9 @@ class DebateSection:
         self.speeches = speeches if speeches is not None else []
         self.summaries = summaries if summaries is not None else []
         self.content_items = (
-            content_items if content_items is not None else self.summaries + self.speeches
+            content_items
+            if content_items is not None
+            else self.summaries + self.speeches
         )
         self.pdf_location = pdf_location
 

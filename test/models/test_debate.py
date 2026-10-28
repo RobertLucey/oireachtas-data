@@ -29,4 +29,7 @@ def test_debate_model_contains_archive_data_and_nested_models():
     assert debate.text == "Hello world."
     assert debate.timestamp == datetime.datetime(2026, 10, 22)
     assert debate.content_by_speaker["ExampleSpeaker"] == [paragraph]
-    assert debate.serialize()["sections"][0]["speeches"][0]["paras"][0]["content"] == "Hello world."
+    assert (
+        debate.serialize()["sections"][0]["speeches"][0]["paras"][0]["content"]
+        == "Hello world."
+    )

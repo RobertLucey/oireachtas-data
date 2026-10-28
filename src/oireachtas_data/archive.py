@@ -102,7 +102,11 @@ def debate_from_record(metadata, files):
                 parent = parents.get(element)
                 while parent is not None and _name(parent) != "debateSection":
                     parent = parents.get(parent)
-                item = _speech(element) if _name(element) == "speech" else _summary(element)
+                item = (
+                    _speech(element)
+                    if _name(element) == "speech"
+                    else _summary(element)
+                )
                 if parent is not None:
                     if _name(element) == "speech":
                         speeches_by_section[parent].append(item)
@@ -192,8 +196,12 @@ class DownloadedDebates:
                 if key in seen:
                     continue
                 seen.add(key)
-                files = {kind: directory / path for kind, path in entry["files"].items()}
-                self._entries.append((page_paths[position // 1000], position % 1000, files))
+                files = {
+                    kind: directory / path for kind, path in entry["files"].items()
+                }
+                self._entries.append(
+                    (page_paths[position // 1000], position % 1000, files)
+                )
 
     @lru_cache(maxsize=1)
     def _page(self, path):

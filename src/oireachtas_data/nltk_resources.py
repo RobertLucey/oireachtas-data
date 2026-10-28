@@ -15,7 +15,9 @@ def private_data_dir():
     if configured:
         directory = Path(configured).expanduser()
     elif os.getenv("TEST_ENV", "False") != "False":
-        directory = Path(tempfile.gettempdir()) / ("oireachtas_nltk_data_" + str(os.getuid()))
+        directory = Path(tempfile.gettempdir()) / (
+            "oireachtas_nltk_data_" + str(os.getuid())
+        )
     else:
         directory = Path.home() / ".oireachtas_nltk_data"
 
@@ -27,7 +29,9 @@ def private_data_dir():
 
     info = directory.stat()
     if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) & 0o077:
-        raise PermissionError("NLTK data directory must be owned by you and private: " + str(directory))
+        raise PermissionError(
+            "NLTK data directory must be owned by you and private: " + str(directory)
+        )
     if str(directory) not in nltk.data.path:
         nltk.data.path.insert(0, str(directory))
     return directory

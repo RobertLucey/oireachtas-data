@@ -1,4 +1,4 @@
-from unittest import TestCase, skip
+from unittest import TestCase
 
 from oireachtas_data.models.member import Member, Members
 

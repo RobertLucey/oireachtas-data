@@ -8,14 +8,17 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from oireachtas_data.archive import DownloadedDebates, debate_from_record, get_downloaded_debates
+from oireachtas_data.archive import (
+    DownloadedDebates,
+    debate_from_record,
+    get_downloaded_debates,
+)
 from oireachtas_data.bin import download_all
 from oireachtas_data.models.debate import Debate
 from oireachtas_data.models.debate_section import DebateSection
 from oireachtas_data.models.para import Para
 from oireachtas_data.models.speech import Speech
 from oireachtas_data.utils import get_debates, iter_debates
-
 
 
 def test_full_download_paginates_and_resumes():
@@ -25,31 +28,65 @@ def test_full_download_paginates_and_resumes():
         urls.append(url)
         parsed = urlsplit(url)
         if parsed.hostname == "data.oireachtas.ie":
-            return b"<debate>report contents</debate>" if parsed.path.endswith(".xml") else b"pdf"
+            return (
+                b"<debate>report contents</debate>"
+                if parsed.path.endswith(".xml")
+                else b"pdf"
+            )
         params = parse_qs(parsed.query)
         if parsed.path.endswith("/members"):
             offset = int(params["skip"][0])
             count = 1000 if offset == 0 else 1
-            return json.dumps({"results": [{"member": {"pId": str(offset + i), "memberships": []}} for i in range(count)]}).encode()
-        return json.dumps({"results": [{"contextDate": "2026-10-22", "debateRecord": {
-            "uri": "https://data.oireachtas.ie/debate/1",
-            "chamber": {"showAs": "Dáil Éireann"},
-            "formats": {
-            "xml": {"uri": "https://data.oireachtas.ie/report.xml"},
-            "pdf": {"uri": "https://data.oireachtas.ie/report.pdf"},
-        }}}]}).encode()
+            return json.dumps(
+                {
+                    "results": [
+                        {"member": {"pId": str(offset + i), "memberships": []}}
+                        for i in range(count)
+                    ]
+                }
+            ).encode()
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": "2026-10-22",
+                        "debateRecord": {
+                            "uri": "https://data.oireachtas.ie/debate/1",
+                            "chamber": {"showAs": "Dáil Éireann"},
+                            "formats": {
+                                "xml": {"uri": "https://data.oireachtas.ie/report.xml"},
+                                "pdf": {"uri": "https://data.oireachtas.ie/report.pdf"},
+                            },
+                        },
+                    }
+                ]
+            }
+        ).encode()
 
     with tempfile.TemporaryDirectory() as temporary:
         output = Path(temporary)
         with patch.object(download_all, "fetch", side_effect=fake_fetch):
             download_all.download_members(output, refresh=False)
-            download_all.download_debates(output, dt.date(2026, 10, 22), dt.date(2026, 10, 22), False, False)
+            download_all.download_debates(
+                output, dt.date(2026, 10, 22), dt.date(2026, 10, 22), False, False
+            )
             first_run_requests = len(urls)
             download_all.download_members(output, refresh=False)
-            download_all.download_debates(output, dt.date(2026, 10, 22), dt.date(2026, 10, 22), False, False)
+            download_all.download_debates(
+                output, dt.date(2026, 10, 22), dt.date(2026, 10, 22), False, False
+            )
 
-        assert len(json.loads((output / "members" / "members.json").read_text())) == 1001
-        assert len(json.loads((output / "archive" / "members" / "members.json").read_text())) == 1001
+        assert (
+            len(json.loads((output / "members" / "members.json").read_text())) == 1001
+        )
+        assert (
+            len(
+                json.loads(
+                    (output / "archive" / "members" / "members.json").read_text()
+                )
+            )
+            == 1001
+        )
         month = output / "archive" / "debates" / "2026-10" / "2026-10-22_2026-10-22"
         assert len(list((month / "reports").iterdir())) == 2
         index = json.loads((month / "index.json").read_text())
@@ -58,8 +95,12 @@ def test_full_download_paginates_and_resumes():
         assert len(debates) == 1
         assert type(debates[0]) is Debate
         assert debates[0].text == "report contents"
-        assert [debate.date for debate in get_debates(output / "archive")] == ["2026-10-22"]
-        assert [debate.date for debate in iter_debates(output / "archive")] == ["2026-10-22"]
+        assert [debate.date for debate in get_debates(output / "archive")] == [
+            "2026-10-22"
+        ]
+        assert [debate.date for debate in iter_debates(output / "archive")] == [
+            "2026-10-22"
+        ]
         lazy_debates = DownloadedDebates(output / "archive")
         assert len(lazy_debates) == 1
         assert lazy_debates[0].date == "2026-10-22"
@@ -73,10 +114,19 @@ def test_separate_date_ranges_in_one_month_are_both_loaded():
         date = parse_qs(urlsplit(url).query)["date_start"][0]
         if date == "2026-10-24":
             return json.dumps({"results": []}).encode()
-        return json.dumps({"results": [{"contextDate": date, "debateRecord": {
-            "uri": "https://data.oireachtas.ie/debate/" + date,
-            "formats": {},
-        }}]}).encode()
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": date,
+                        "debateRecord": {
+                            "uri": "https://data.oireachtas.ie/debate/" + date,
+                            "formats": {},
+                        },
+                    }
+                ]
+            }
+        ).encode()
 
     with tempfile.TemporaryDirectory() as temporary:
         output = Path(temporary)
@@ -99,13 +149,22 @@ def test_denied_report_does_not_stop_download_and_can_be_retried():
             return b"pdf"
         if url.endswith("report.xml"):
             return b"<debate/>"
-        return json.dumps({"results": [{"contextDate": "2026-10-22", "debateRecord": {
-            "uri": "https://data.oireachtas.ie/debate/1",
-            "formats": {
-                "xml": {"uri": "https://data.oireachtas.ie/report.xml"},
-                "pdf": {"uri": "https://data.oireachtas.ie/report.pdf"},
-            },
-        }}]}).encode()
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": "2026-10-22",
+                        "debateRecord": {
+                            "uri": "https://data.oireachtas.ie/debate/1",
+                            "formats": {
+                                "xml": {"uri": "https://data.oireachtas.ie/report.xml"},
+                                "pdf": {"uri": "https://data.oireachtas.ie/report.pdf"},
+                            },
+                        },
+                    }
+                ]
+            }
+        ).encode()
 
     with tempfile.TemporaryDirectory() as temporary:
         output = Path(temporary)
@@ -130,9 +189,10 @@ def test_denied_report_does_not_stop_download_and_can_be_retried():
 
 
 def test_download_command_fetches_the_full_archive_only():
-    with patch.object(download_all, "download_members") as members, patch.object(
-        download_all, "download_debates"
-    ) as debates:
+    with (
+        patch.object(download_all, "download_members") as members,
+        patch.object(download_all, "download_debates") as debates,
+    ):
         download_all.main([])
         assert members.call_count == 1
         assert debates.call_args.args[1] == dt.date(1919, 1, 1)
@@ -154,13 +214,21 @@ def test_archive_xml_builds_debate_speech_and_para_models():
         </debateSection>
       </debateBody></debate>
     </akomaNtoso>"""
-    metadata = {"contextDate": "2026-10-22", "debateRecord": {
-        "chamber": {"showAs": "Dáil Éireann"},
-        "debateSections": [
-            {"debateSection": {"debateSectionId": "dbsect_1", "showAs": "Opening"}},
-            {"debateSection": {"debateSectionId": "dbsect_2", "showAs": "Questions"}},
-        ],
-    }}
+    metadata = {
+        "contextDate": "2026-10-22",
+        "debateRecord": {
+            "chamber": {"showAs": "Dáil Éireann"},
+            "debateSections": [
+                {"debateSection": {"debateSectionId": "dbsect_1", "showAs": "Opening"}},
+                {
+                    "debateSection": {
+                        "debateSectionId": "dbsect_2",
+                        "showAs": "Questions",
+                    }
+                },
+            ],
+        },
+    }
     with tempfile.TemporaryDirectory() as temporary:
         path = Path(temporary) / "debate.xml"
         path.write_text(xml)
@@ -187,11 +255,19 @@ def test_archive_summaries_fill_sections_without_speeches():
         <summary eId="sum_2">The <i>Roll</i> was called.</summary>
       </debateSection>
     </debateBody></debate></akomaNtoso>"""
-    metadata = {"contextDate": "1919-01-22", "debateRecord": {
-        "debateSections": [{"debateSection": {
-            "debateSectionId": "dbsect_1", "showAs": "Prelude",
-        }}],
-    }}
+    metadata = {
+        "contextDate": "1919-01-22",
+        "debateRecord": {
+            "debateSections": [
+                {
+                    "debateSection": {
+                        "debateSectionId": "dbsect_1",
+                        "showAs": "Prelude",
+                    }
+                }
+            ],
+        },
+    }
     with tempfile.TemporaryDirectory() as temporary:
         path = Path(temporary) / "debate.xml"
         path.write_text(xml)

@@ -9,7 +9,9 @@ from nltk.tag.perceptron import PerceptronTagger
 from oireachtas_data.nltk_resources import ensure_resource
 
 _NEW_NLTK_DATA = tuple(int(part) for part in nltk.__version__.split(".")[:2]) >= (3, 9)
-_TAGGER_PACKAGE = "averaged_perceptron_tagger_eng" if _NEW_NLTK_DATA else "averaged_perceptron_tagger"
+_TAGGER_PACKAGE = (
+    "averaged_perceptron_tagger_eng" if _NEW_NLTK_DATA else "averaged_perceptron_tagger"
+)
 _PUNKT_PACKAGE = "punkt_tab" if _NEW_NLTK_DATA else "punkt"
 
 

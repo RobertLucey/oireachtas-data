@@ -7,7 +7,9 @@ BASE_DIR = (
     else os.path.expanduser(
         os.getenv(
             "OIREACHTAS_DATA_DIR",
-            os.path.join(os.getenv("XDG_DATA_HOME", "~/.local/share"), "oireachtas_data"),
+            os.path.join(
+                os.getenv("XDG_DATA_HOME", "~/.local/share"), "oireachtas_data"
+            ),
         )
     )
 )
