@@ -50,7 +50,7 @@ class Members:
         # Minister for Something (Deputy Joan Malone)
         if "Minister" in name:
             try:
-                name = re.findall("\((.*?)\)", name)[0]
+                name = re.findall(r"\((.*?)\)", name)[0]
             except Exception:
                 pass
 

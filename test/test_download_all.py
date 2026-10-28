@@ -189,10 +189,9 @@ def test_denied_report_does_not_stop_download_and_can_be_retried():
 
 
 def test_download_command_fetches_the_full_archive_only():
-    with (
-        patch.object(download_all, "download_members") as members,
-        patch.object(download_all, "download_debates") as debates,
-    ):
+    with patch.object(download_all, "download_members") as members, patch.object(
+        download_all, "download_debates"
+    ) as debates:
         download_all.main([])
         assert members.call_count == 1
         assert debates.call_args.args[1] == dt.date(1919, 1, 1)
