@@ -23,8 +23,9 @@ from oireachtas_data.models.member import Member
 API_URL = "https://api.oireachtas.ie/v1"
 PAGE_SIZE = 1000
 FIRST_DEBATE = dt.date(1919, 1, 1)
+FIRST_QUESTION = dt.date(1980, 1, 1)
 FORMAT_KINDS = ("xml", "pdf", "writtens_pdf")
-COLLECTIONS = ("members", "debates")
+COLLECTIONS = ("members", "references", "debates", "questions", "votes", "legislation")
 LOG = logging.getLogger("download_all")
 
 
@@ -342,15 +343,210 @@ def download_debates(output, start, end, refresh, metadata_only, workers=1):
         )
 
 
+def download_reference_data(output, refresh):
+    """Save the smaller API collections that describe parliamentary entities."""
+    refresh = True
+    houses_dir = output / "archive" / "houses"
+    houses = list(pages("houses", {}, houses_dir / "pages", refresh))
+    _write_index(houses_dir / "houses.json", houses)
+    LOG.info("Saved %s houses", len(houses))
+
+    for endpoint in ("parties", "constituencies"):
+        directory = output / "archive" / endpoint
+        records = []
+        for item in houses:
+            house = item.get("house") or {}
+            code, number = house.get("houseCode"), house.get("houseNo")
+            if code not in ("dail", "seanad") or not number:
+                continue
+            house_dir = directory / "pages" / code / str(number)
+            records.extend(
+                pages(
+                    endpoint, {"chamber": code, "house_no": number}, house_dir, refresh
+                )
+            )
+        _write_index(directory / (endpoint + ".json"), records)
+        LOG.info("Saved %s %s records", len(records), endpoint)
+
+
+def download_questions(output, start, end, refresh, workers=1):
+    count = 0
+    skipped_periods = 0
+    for first, last in month_ranges(start, end):
+        refresh_period = refresh or last >= dt.date.today().replace(day=1)
+        month_dir = month_directory(output, "questions", first, last)
+        index_path = month_dir / "index.json"
+        if _period_complete(index_path, refresh_period):
+            skipped_periods += 1
+            continue
+        report_state = ReportFetchState()
+        params = {
+            "date_start": first.isoformat(),
+            "date_end": last.isoformat(),
+            "show_answers": "true",
+        }
+
+        def process(item):
+            question = item.get("question") or {}
+            section = question.get("debateSection") or {}
+            files, unavailable = _save_linked_files(
+                section.get("formats"),
+                month_dir,
+                "reports",
+                refresh,
+                question.get("uri") or item.get("contextDate"),
+                report_state,
+            )
+            return (
+                {
+                    "uri": question.get("uri"),
+                    "date": item.get("contextDate") or question.get("date"),
+                    "files": files,
+                },
+                unavailable,
+            )
+
+        index = []
+        period_unavailable = 0
+        for entry, unavailable in _map_records(
+            pages("questions", params, month_dir / "pages", refresh_period),
+            process,
+            workers,
+        ):
+            index.append(entry)
+            count += 1
+            period_unavailable += unavailable
+        _finish_period(index_path, index, period_unavailable)
+        LOG.info("Completed questions %s", first.strftime("%Y-%m"))
+    LOG.info(
+        "Processed %s questions; reused %s completed periods", count, skipped_periods
+    )
+
+
+def download_votes(output, start, end, refresh, workers=1):
+    count = 0
+    skipped_periods = 0
+    for first, last in year_ranges(start, end):
+        refresh_period = refresh or first.year == dt.date.today().year
+        year_dir = output / "archive" / "votes" / str(first.year)
+        index_path = year_dir / "index.json"
+        if _period_complete(index_path, refresh_period):
+            skipped_periods += 1
+            continue
+        report_state = ReportFetchState()
+        params = {"date_start": first.isoformat(), "date_end": last.isoformat()}
+
+        def process(item):
+            division = item.get("division") or {}
+            debate = division.get("debate") or {}
+            files, unavailable = _save_linked_files(
+                debate.get("formats"),
+                year_dir,
+                "reports",
+                refresh,
+                division.get("uri") or item.get("contextDate"),
+                report_state,
+            )
+            return (
+                {
+                    "uri": division.get("uri"),
+                    "date": item.get("contextDate") or division.get("date"),
+                    "files": files,
+                },
+                unavailable,
+            )
+
+        index = []
+        period_unavailable = 0
+        for entry, unavailable in _map_records(
+            pages("votes", params, year_dir / "pages", refresh_period),
+            process,
+            workers,
+        ):
+            index.append(entry)
+            count += 1
+            period_unavailable += unavailable
+        _finish_period(index_path, index, period_unavailable)
+        LOG.info("Completed votes %s", first.year)
+    LOG.info("Processed %s votes; reused %s completed periods", count, skipped_periods)
+
+
+def download_legislation(output, start_year, end_year, refresh, workers=1):
+    count = 0
+    skipped_periods = 0
+    document_groups = (
+        ("versions", "version"),
+        ("relatedDocs", "relatedDoc"),
+        ("amendmentLists", "amendmentList"),
+    )
+    for year in range(start_year, end_year + 1):
+        refresh_period = refresh or year == dt.date.today().year
+        year_dir = output / "archive" / "legislation" / str(year)
+        index_path = year_dir / "index.json"
+        if _period_complete(index_path, refresh_period):
+            skipped_periods += 1
+            continue
+        report_state = ReportFetchState()
+
+        def process(item):
+            bill = item.get("bill") or {}
+            entry = {"uri": bill.get("uri"), "year": bill.get("billYear")}
+            unavailable_total = 0
+            for collection, wrapper in document_groups:
+                documents = []
+                for document_item in bill.get(collection) or []:
+                    document = document_item.get(wrapper) or {}
+                    files, unavailable = _save_linked_files(
+                        document.get("formats"),
+                        year_dir,
+                        "reports/" + collection,
+                        refresh,
+                        document.get("uri") or bill.get("uri"),
+                        report_state,
+                    )
+                    documents.append({"uri": document.get("uri"), "files": files})
+                    unavailable_total += unavailable
+                entry[collection] = documents
+            return entry, unavailable_total
+
+        index = []
+        period_unavailable = 0
+        for entry, unavailable in _map_records(
+            pages(
+                "legislation",
+                {"bill_year": str(year)},
+                year_dir / "pages",
+                refresh_period,
+            ),
+            process,
+            workers,
+        ):
+            index.append(entry)
+            count += 1
+            period_unavailable += unavailable
+        _finish_period(index_path, index, period_unavailable)
+        LOG.info("Completed legislation %s", year)
+    LOG.info("Processed %s bills; reused %s completed periods", count, skipped_periods)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=Path(OIREACHTAS_DIR))
     parser.add_argument(
         "--refresh", action="store_true", help="Re-fetch existing pages and reports"
     )
-    parser.add_argument("--workers", type=int, default=4)
     parser.add_argument(
-        "--collections", nargs="+", choices=COLLECTIONS, default=COLLECTIONS
+        "--workers",
+        type=int,
+        default=4,
+        help="Concurrent report downloads (default: 4; use 1 for serial downloads)",
+    )
+    parser.add_argument(
+        "--collections",
+        nargs="+",
+        choices=COLLECTIONS,
+        default=COLLECTIONS,
+        help="Collections to download (default: all)",
     )
     args = parser.parse_args(argv)
     if args.workers < 1:
@@ -360,9 +556,39 @@ def main(argv=None):
     selected = set(args.collections)
     if "members" in selected:
         download_members(args.output_dir, args.refresh)
+    if "references" in selected:
+        download_reference_data(args.output_dir, args.refresh)
     if "debates" in selected:
         download_debates(
-            args.output_dir, FIRST_DEBATE, dt.date.today(), args.refresh, False,
+            args.output_dir,
+            FIRST_DEBATE,
+            dt.date.today(),
+            args.refresh,
+            False,
+            workers=args.workers,
+        )
+    if "questions" in selected:
+        download_questions(
+            args.output_dir,
+            FIRST_QUESTION,
+            dt.date.today(),
+            args.refresh,
+            workers=args.workers,
+        )
+    if "votes" in selected:
+        download_votes(
+            args.output_dir,
+            FIRST_DEBATE,
+            dt.date.today(),
+            args.refresh,
+            workers=args.workers,
+        )
+    if "legislation" in selected:
+        download_legislation(
+            args.output_dir,
+            FIRST_DEBATE.year,
+            dt.date.today().year,
+            args.refresh,
             workers=args.workers,
         )
 

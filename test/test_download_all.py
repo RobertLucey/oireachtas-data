@@ -195,6 +195,96 @@ def test_denied_report_does_not_stop_download_and_can_be_retried():
             assert (month / index[0]["files"]["pdf"]).read_bytes() == b"pdf"
 
 
+def test_current_month_rerun_updates_questions_without_duplicates(tmp_path):
+    today = dt.date.today()
+    first = today.replace(day=1)
+    calls = 0
+
+    def fake_fetch(url):
+        nonlocal calls
+        calls += 1
+        results = [
+            {
+                "contextDate": today.isoformat(),
+                "question": {
+                    "uri": "question/1",
+                    "answerText": "Updated" if calls == 2 else "Old",
+                },
+            }
+        ]
+        if calls == 2:
+            results.append(
+                {
+                    "contextDate": today.isoformat(),
+                    "question": {
+                        "uri": "question/2",
+                        "answerText": "New",
+                    },
+                }
+            )
+        return json.dumps({"results": results}).encode()
+
+    with patch.object(download_all, "fetch", side_effect=fake_fetch):
+        download_all.download_questions(tmp_path, today, today, refresh=False)
+        download_all.download_questions(tmp_path, first, today, refresh=False)
+
+    db = OireachtasArchive(tmp_path / "archive")
+    assert calls == 2
+    assert db.questions.count() == 2
+    assert db.questions.get(uri="question/1").answer_text == "Updated"
+    assert db.questions.get(uri="question/2").answer_text == "New"
+    month_dir = download_all.month_directory(tmp_path, "questions", first, today)
+    assert (month_dir / "index.json").is_file()
+
+
+def test_current_year_rerun_updates_votes_and_legislation(tmp_path):
+    today = dt.date.today()
+    calls = {"votes": 0, "legislation": 0}
+
+    def fake_fetch(url):
+        collection = urlsplit(url).path.rsplit("/", 1)[-1]
+        calls[collection] += 1
+        if collection == "votes":
+            results = [{"division": {"uri": "vote/1", "outcome": "Updated"}}]
+            if calls[collection] == 2:
+                results.append({"division": {"uri": "vote/2"}})
+        else:
+            results = [
+                {
+                    "bill": {
+                        "uri": "bill/1",
+                        "billYear": str(today.year),
+                        "status": "Updated",
+                        "versions": [],
+                    }
+                }
+            ]
+            if calls[collection] == 2:
+                results.append(
+                    {
+                        "bill": {
+                            "uri": "bill/2",
+                            "billYear": str(today.year),
+                            "versions": [],
+                        }
+                    }
+                )
+        return json.dumps({"results": results}).encode()
+
+    with patch.object(download_all, "fetch", side_effect=fake_fetch):
+        for _ in range(2):
+            download_all.download_votes(tmp_path, today, today, refresh=False)
+            download_all.download_legislation(
+                tmp_path, today.year, today.year, refresh=False
+            )
+
+    db = OireachtasArchive(tmp_path / "archive")
+    assert calls == {"votes": 2, "legislation": 2}
+    assert db.votes.count() == db.bills.count() == 2
+    assert db.votes.get(uri="vote/1").outcome == "Updated"
+    assert db.bills.get(uri="bill/1").status == "Updated"
+
+
 def test_refresh_removes_pages_beyond_new_last_page(tmp_path):
     smaller = False
 
@@ -216,6 +306,32 @@ def test_refresh_removes_pages_beyond_new_last_page(tmp_path):
         smaller = True
         assert len(list(download_all.pages("questions", {}, directory, True))) == 1
     assert not (directory / "000002.json").exists()
+
+
+def test_completed_historical_period_is_skipped_without_reading_pages(tmp_path):
+    date = dt.date(2024, 1, 22)
+    with patch.object(
+        download_all,
+        "fetch",
+        return_value=json.dumps(
+            {"results": [{"contextDate": date.isoformat(), "question": {"uri": "q/1"}}]}
+        ).encode(),
+    ):
+        download_all.download_questions(tmp_path, date, date, refresh=False)
+    index_path = (
+        tmp_path
+        / "archive"
+        / "questions"
+        / "2024-01"
+        / "2024-01-22_2024-01-22"
+        / "index.json"
+    )
+    original = index_path.read_bytes()
+    with patch.object(
+        download_all, "pages", side_effect=AssertionError("read cached pages")
+    ):
+        download_all.download_questions(tmp_path, date, date, refresh=False)
+    assert index_path.read_bytes() == original
 
 
 def test_report_downloads_use_bounded_workers_and_atomic_files(tmp_path):
@@ -365,6 +481,208 @@ def test_download_url_is_logged_only_when_fetched(tmp_path, caplog):
         download_all.download_report_file(url, tmp_path, "xml", refresh=False)
     request.assert_called_once()
     assert caplog.messages.count("Downloading " + url) == 1
+
+
+def test_download_command_fetches_the_full_archive_only():
+    with (
+        patch.object(download_all, "download_members") as members,
+        patch.object(download_all, "download_reference_data") as references,
+        patch.object(download_all, "download_debates") as debates,
+        patch.object(download_all, "download_questions") as questions,
+        patch.object(download_all, "download_votes") as votes,
+        patch.object(download_all, "download_legislation") as legislation,
+    ):
+        download_all.main([])
+        assert members.call_count == 1
+        assert references.call_count == 1
+        assert debates.call_args.args[1] == dt.date(1919, 1, 1)
+        assert debates.call_args.args[2] == dt.date.today()
+        assert debates.call_args.args[3:] == (False, False)
+        assert questions.call_args.args[1:3] == (dt.date(1980, 1, 1), dt.date.today())
+        assert votes.call_args.args[1:3] == (dt.date(1919, 1, 1), dt.date.today())
+        assert legislation.call_args.args[1:3] == (1919, dt.date.today().year)
+        assert debates.call_args.kwargs["workers"] == 4
+        download_all.main(["--workers", "2"])
+        assert questions.call_args.kwargs["workers"] == 2
+        with pytest.raises(SystemExit):
+            download_all.main(["--year", "2025"])
+        with pytest.raises(SystemExit):
+            download_all.main(["--workers", "0"])
+
+
+def test_download_command_can_select_only_debates():
+    with (
+        patch.object(download_all, "download_members") as members,
+        patch.object(download_all, "download_reference_data") as references,
+        patch.object(download_all, "download_debates") as debates,
+        patch.object(download_all, "download_questions") as questions,
+        patch.object(download_all, "download_votes") as votes,
+        patch.object(download_all, "download_legislation") as legislation,
+    ):
+        download_all.main(["--collections", "debates"])
+    debates.assert_called_once()
+    for skipped in (members, references, questions, votes, legislation):
+        skipped.assert_not_called()
+
+
+def test_downloads_additional_collections_and_linked_documents(tmp_path):
+    requests = []
+
+    def fake_fetch(url):
+        requests.append(url)
+        parsed = urlsplit(url)
+        if parsed.hostname == "data.oireachtas.ie":
+            return b"<akomaNtoso/>" if parsed.path.endswith(".xml") else b"%PDF-1.7\n"
+        params = parse_qs(parsed.query)
+        if parsed.path.endswith("/houses"):
+            results = [
+                {"house": {"houseCode": "dail", "houseNo": "33"}},
+                {"house": {"houseCode": "dail", "houseNo": "34"}},
+            ]
+        elif parsed.path.endswith("/parties"):
+            assert params["chamber"] == ["dail"]
+            results = [
+                {
+                    "party": {
+                        "uri": "https://data.oireachtas.ie/party/"
+                        + params["house_no"][0]
+                    }
+                }
+            ]
+        elif parsed.path.endswith("/constituencies"):
+            assert params["chamber"] == ["dail"]
+            results = [
+                {
+                    "constituencyOrPanel": {
+                        "uri": "https://data.oireachtas.ie/constituency/"
+                        + params["house_no"][0]
+                    }
+                }
+            ]
+        elif parsed.path.endswith("/questions"):
+            assert params["show_answers"] == ["true"]
+            results = [
+                {
+                    "contextDate": "2024-01-22",
+                    "question": {
+                        "uri": "https://data.oireachtas.ie/question/1",
+                        "answerText": "The answer.",
+                        "debateSection": {
+                            "formats": {
+                                "xml": {
+                                    "uri": "https://data.oireachtas.ie/question.xml"
+                                }
+                            }
+                        },
+                    },
+                }
+            ]
+        elif parsed.path.endswith("/votes"):
+            results = [
+                {
+                    "contextDate": "2024-01-22",
+                    "division": {
+                        "uri": "https://data.oireachtas.ie/vote/1",
+                        "tallies": {"taVotes": {"tally": 1}},
+                        "debate": {
+                            "formats": {
+                                "pdf": {"uri": "https://data.oireachtas.ie/vote.pdf"}
+                            }
+                        },
+                    },
+                }
+            ]
+        elif parsed.path.endswith("/legislation"):
+            assert params["bill_year"] == ["2024"]
+            results = [
+                {
+                    "bill": {
+                        "uri": "https://data.oireachtas.ie/bill/1",
+                        "billYear": "2024",
+                        "versions": [
+                            {
+                                "version": {
+                                    "uri": "https://data.oireachtas.ie/version/1",
+                                    "formats": {
+                                        "pdf": {
+                                            "uri": "https://data.oireachtas.ie/version.pdf"
+                                        }
+                                    },
+                                }
+                            }
+                        ],
+                        "relatedDocs": [
+                            {
+                                "relatedDoc": {
+                                    "uri": "https://data.oireachtas.ie/doc/1",
+                                    "formats": {
+                                        "xml": {
+                                            "uri": "https://data.oireachtas.ie/doc.xml"
+                                        }
+                                    },
+                                }
+                            }
+                        ],
+                        "amendmentLists": [
+                            {
+                                "amendmentList": {
+                                    "formats": {
+                                        "pdf": {
+                                            "uri": "https://data.oireachtas.ie/amendment.pdf"
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                    }
+                }
+            ]
+        else:
+            raise AssertionError(url)
+        return json.dumps({"results": results}).encode()
+
+    first = last = dt.date(2024, 1, 22)
+    with patch.object(download_all, "fetch", side_effect=fake_fetch):
+        download_all.download_reference_data(tmp_path, refresh=False)
+        download_all.download_questions(tmp_path, first, last, refresh=False)
+        download_all.download_votes(tmp_path, first, last, refresh=False)
+        download_all.download_legislation(tmp_path, 2024, 2024, refresh=False)
+        first_requests = len(requests)
+        download_all.download_reference_data(tmp_path, refresh=False)
+        download_all.download_questions(tmp_path, first, last, refresh=False)
+        download_all.download_votes(tmp_path, first, last, refresh=False)
+        download_all.download_legislation(tmp_path, 2024, 2024, refresh=False)
+
+    assert len(requests) == first_requests + 5  # Current reference collections refresh.
+    archive = tmp_path / "archive"
+    assert len(json.loads((archive / "houses" / "houses.json").read_text())) == 2
+    assert len(json.loads((archive / "parties" / "parties.json").read_text())) == 2
+    assert (
+        len(
+            json.loads((archive / "constituencies" / "constituencies.json").read_text())
+        )
+        == 2
+    )
+    question_dir = archive / "questions" / "2024-01" / "2024-01-22_2024-01-22"
+    question = json.loads((question_dir / "index.json").read_text())[0]
+    assert (question_dir / question["files"]["xml"]).is_file()
+    assert (
+        json.loads((question_dir / "pages" / "000000.json").read_text())["results"][0][
+            "question"
+        ]["answerText"]
+        == "The answer."
+    )
+    vote_dir = archive / "votes" / "2024"
+    vote = json.loads((vote_dir / "index.json").read_text())[0]
+    assert (vote_dir / vote["files"]["pdf"]).read_bytes().startswith(b"%PDF-")
+    bill_dir = archive / "legislation" / "2024"
+    bill = json.loads((bill_dir / "index.json").read_text())[0]
+    for collection, kind in (
+        ("versions", "pdf"),
+        ("relatedDocs", "xml"),
+        ("amendmentLists", "pdf"),
+    ):
+        assert (bill_dir / bill[collection][0]["files"][kind]).is_file()
 
 
 def test_downloads_debate_section_documents(tmp_path):
