@@ -107,6 +107,54 @@ class MembersTest(TestCase):
 
         self.assertIsNotNone(self.MEMBERS.get_member("#PadraicOMaille"))
 
+    def test_ambiguous_name_requires_id(self):
+        members = Members()
+        first = Member(**{
+            **self.SAMPLE_MEMBERS_CONTENT[0],
+            "pid": "PadraicOMailleFF",
+        })
+        second = Member(**{
+            **self.SAMPLE_MEMBERS_CONTENT[0],
+            "pid": "PadraicOMailleFG",
+            "member_code": "Another-Padraic-OMaille.D.1980-01-01",
+        })
+        members.append(first)
+        members.append(second)
+
+        with self.assertLogs("oireachtas_data.models.member", level="WARNING") as logs:
+            self.assertIsNone(members.get_member("Pádraic Ó Maille"))
+        self.assertIn("Ambiguous member name", logs.output[0])
+        self.assertIs(members.get_member("#PadraicOMailleFF"), first)
+        self.assertIs(members.get_member("#PadraicOMailleFG"), second)
+
+    def test_id_resolves_ambiguous_names(self):
+        members = Members()
+        first = Member(**self.SAMPLE_MEMBERS_CONTENT[0])
+        second = Member(**{
+            **self.SAMPLE_MEMBERS_CONTENT[0],
+            "pid": "PadraicOMaille2",
+            "member_code": "Another-Padraic-OMaille.D.1980-01-01",
+        })
+        members.append(first)
+        members.append(second)
+
+        self.assertIs(members.get_member("#PadraicOMaille2"), second)
+        self.assertIs(members.get_member_from_id(second.member_code), second)
+
+    def test_ambiguous_fuzzy_name(self):
+        members = Members()
+        first = Member(**self.SAMPLE_MEMBERS_CONTENT[0])
+        second = Member(**{
+            **self.SAMPLE_MEMBERS_CONTENT[0],
+            "pid": "PadraicOMailly",
+            "member_code": "Another-Padraic-OMailly.D.1980-01-01",
+        })
+        members.append(first)
+        members.append(second)
+
+        with self.assertLogs("oireachtas_data.models.member", level="WARNING"):
+            self.assertIsNone(members.get_member_from_name("PadraicOMaill"))
+
     def test_parties(self):
         self.assertEqual(
             self.MEMBERS.parties_of_member("LabhrasOMurchu"), ["Fianna_Fáil"]
@@ -116,10 +164,6 @@ class MembersTest(TestCase):
         self.assertEqual(
             Members.clean_name("Minister (Padraic OMaille)"), "PadraicOMaille"
         )
-
-    def test_get_probable_members(self):
-        probable_members, probable_member_pids = self.MEMBERS.get_probable_members("P")
-        self.assertEqual(probable_member_pids, set(["PadraicOMaille"]))
 
     def test_serialize(self):
         serialization = self.MEMBERS.serialize()
@@ -250,4 +294,10 @@ class MemberTest(TestCase):
     def test_from_file(self):
         self.assertEqual(
             Member(**self.SAMPLE_MEMBER_CONTENT).serialize(), self.SAMPLE_MEMBER_CONTENT
+        )
+
+    def test_repr_shows_name(self):
+        self.assertEqual(
+            repr(Member(**self.SAMPLE_MEMBER_CONTENT)),
+            "Member('Labhrás Ó Murchú')",
         )

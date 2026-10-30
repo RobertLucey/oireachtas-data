@@ -1,6 +1,5 @@
-from oireachtas_data.log import logger
+import logging
 
-from oireachtas_data.models.member import Members
+logger = logging.getLogger("oireachtas_data")
 
-members = Members()
-members.load()
+from oireachtas_data.models.member import members as members

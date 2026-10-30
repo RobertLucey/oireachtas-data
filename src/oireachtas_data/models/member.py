@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from functools import lru_cache
 
 import ujson
@@ -7,6 +8,8 @@ import edlib
 import unidecode
 
 from oireachtas_data.constants import MEMBERS_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class Members:
@@ -21,6 +24,7 @@ class Members:
         return [m.serialize() for m in self.data]
 
     def write(self):
+        os.makedirs(MEMBERS_DIR, exist_ok=True)
         with open(os.path.join(MEMBERS_DIR, "members.json"), "w") as f:
             f.write(ujson.dumps(self.serialize()))
 
@@ -39,8 +43,7 @@ class Members:
     def get_member(self, member_str):
         if member_str.startswith("#"):
             return self.get_member_from_id(member_str)
-        else:
-            return self.get_member_from_name(member_str)
+        return self.get_member_from_name(member_str)
 
     @staticmethod
     def clean_name(name):
@@ -72,91 +75,64 @@ class Members:
 
         return name.strip()
 
-    @lru_cache(maxsize=100)
-    def get_probable_members(self, starting_char):
-        # if starting_char is longer than a char then deal with it
-        probable_members = [
-            m for m in self.data if m.pid is not None and m.pid[0] == starting_char
-        ]
-        probable_members_pids = set([m.pid for m in probable_members])
-        return probable_members, probable_members_pids
-
     @lru_cache(maxsize=10000)
     def get_member_from_name(self, name):
-        # Some issues with michael collins since there are two
-        # FIXME: Any near duplicate names should be noted.
-        # if there's a number at the end we need to be very careful
-
-        # FIXME: If middle names are included we may need to remove the middle name. Example: Deputy Mary Alexandra White
-
         if name and name[0].islower():
             # Fairly confident it's not a valid name. Look into better parsing
             return
 
+        original_name = name
         name = self.clean_name(name)
 
         if not name:
             return
 
-        member_pid_used_set = set()
+        exact = [member for member in self.data if member.pid == name]
+        if exact:
+            return self._unique_match(original_name, exact)
+
+        aliases = (f"{name}FF", f"{name}LAB", f"{name}FG", f"{name}SF", f"Dr{name}")
+        matches = [
+            member for member in self.data
+            if member.pid in aliases or (member.pid and f"Ms{member.pid}" == name)
+        ]
+        if matches:
+            return self._unique_match(original_name, matches)
+
+        distances = []
         for member in self.data:
             member_pid = member.pid
-            if member_pid in member_pid_used_set:
+            if not member_pid or len(set(member_pid).symmetric_difference(name)) > 2:
                 continue
-            member_pid_used_set.add(member_pid)
+            distance = edlib.align(member_pid, name)["editDistance"]
+            if distance < 4:
+                distances.append((distance, member))
 
-            if member_pid is None:
-                continue
-            elif member_pid == name:
-                return member
-            elif member_pid == f"{name}FF":
-                return member
-            elif member_pid == f"{name}LAB":
-                return member
-            elif member_pid == f"{name}FG":
-                return member
-            elif member_pid == f"{name}SF":
-                return member
-            elif member_pid == f"Dr{name}":
-                return member
-            elif f"Ms{member_pid}" == name:
-                return member
+        if distances:
+            best_distance = min(distance for distance, _ in distances)
+            return self._unique_match(
+                original_name,
+                [member for distance, member in distances if distance == best_distance],
+            )
 
-        probable_members, probable_members_pids = self.get_probable_members(name[0])
-
-        for member in probable_members:
-            member_pid = member.pid
-
-            if member_pid is None:
-                continue
-            elif len(set(member_pid).symmetric_difference(name)) > 2:
-                continue
-            elif edlib.align(member_pid, name)["editDistance"] < 4:
-                return member
-
-        member_pid_used_set = set()
-        for member in self.data:
-            member_pid = member.pid
-            if member_pid in member_pid_used_set:
-                continue
-            member_pid_used_set.add(member_pid)
-
-            if member_pid is None:
-                continue
-            elif member_pid in probable_members_pids:
-                continue
-            elif len(set(member_pid).symmetric_difference(name)) > 2:
-                continue
-            elif edlib.align(member_pid, name)["editDistance"] < 4:
-                return member
+    @staticmethod
+    def _unique_match(name, matches):
+        if len(matches) == 1:
+            return matches[0]
+        logger.warning(
+            "Ambiguous member name %r matches %s",
+            name,
+            [(member.pid, member.member_code) for member in matches],
+        )
+        return None
 
     @lru_cache(maxsize=10000)
     def get_member_from_id(self, pid):
-        pid = pid.replace("#", "")
+        pid = pid.lstrip("#")
 
-        for member in self.data:
-            if member.pid == pid:
-                return member
+        matches = [member for member in self.data if member.pid == pid or member.member_code == pid]
+        if matches:
+            return self._unique_match(pid, matches)
 
     @lru_cache(maxsize=10000)
     def parties_of_member(self, member):
@@ -185,14 +161,14 @@ class Member:
         "_set_pid",
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.date_of_death = kwargs.get(
             "dateOfDeath", kwargs.get("date_of_death", None)
         )
         self.first_name = kwargs.get("firstName", kwargs.get("first_name", None))
         self.last_name = kwargs.get("lastName", kwargs.get("last_name", None))
         self.full_name = kwargs.get("fullName", kwargs.get("full_name", None))
-        self.gender = kwargs.get("gender", kwargs.get("gender", None))
+        self.gender = kwargs.get("gender")
         self.member_code = kwargs.get("memberCode", kwargs.get("member_code", None))
         self._pid = kwargs.get("pId", kwargs.get("pid", None))
         self._set_pid = None
@@ -203,6 +179,9 @@ class Member:
                 self.memberships.append(Membership(**membership["membership"]))
             else:
                 self.memberships.append(Membership(**membership))
+
+    def __repr__(self):
+        return f"Member({self.full_name!r})"
 
     @property
     def pid(self):
@@ -232,7 +211,7 @@ class Member:
 class House:
     __slots__ = ("chamber_type", "house_code", "house_no", "show_as")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         self.chamber_type = kwargs.get("chamberType", kwargs.get("chamber_type", None))
         self.house_code = kwargs.get("houseCode", kwargs.get("house_code", None))
         self.house_no = kwargs.get("houseNo", kwargs.get("house_no", None))
@@ -250,7 +229,7 @@ class House:
 class Party:
     __slots__ = ("date_start", "date_end", "party_code", "show_as")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         if "party" in kwargs:
             base = kwargs["party"]
 
@@ -281,7 +260,7 @@ class Party:
 class Represents:
     __slots__ = ("represent_code", "represent_type", "show_as")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         if "represent" in kwargs:
             base = kwargs["represent"]
 
@@ -305,7 +284,7 @@ class Represents:
 class Membership:
     __slots__ = ("date_start", "date_end", "house", "offices", "parties", "represents")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         if "dateRange" in kwargs:
             date_range = kwargs["dateRange"]
             self.date_start = date_range.get("start", None)
@@ -317,9 +296,6 @@ class Membership:
         self.house = House(**kwargs["house"])
 
         self.offices = []
-        for office in kwargs["offices"]:
-            pass  # TODO
-
         self.parties = []
         for party in kwargs["parties"]:
             self.parties.append(Party(**party))
@@ -337,3 +313,6 @@ class Membership:
             "parties": [p.serialize() for p in self.parties],
             "represents": [r.serialize() for r in self.represents],
         }
+
+
+members = Members()
