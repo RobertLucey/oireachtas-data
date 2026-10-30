@@ -26,6 +26,7 @@ Homepage = "https://github.com/RobertLucey/oireachtas-data"
 [project.scripts]
 oireachtas_download = "oireachtas_data.bin.download_all:main"
 oireachtas_load = "oireachtas_data.bin.load_all:main"
+oireachtas_duplicates = "oireachtas_data.bin.find_duplicates:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
