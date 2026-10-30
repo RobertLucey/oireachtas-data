@@ -9,7 +9,8 @@ class Debate:
         "date",
         "chamber",
         "counts",
-        "debate_sections",
+        "_debate_sections",
+        "_sections_loader",
         "debate_type",
         "data_uri",
         "metadata",
@@ -30,17 +31,33 @@ class Debate:
         files=None,
         uri=None,
         text=None,
+        sections_loader=None,
     ):
         self.date = date
         self.chamber = chamber
         self.counts = counts
-        self.debate_sections = debate_sections if debate_sections is not None else []
+        self._debate_sections = debate_sections
+        self._sections_loader = sections_loader
         self.debate_type = debate_type
         self.data_uri = data_uri
         self.metadata = metadata if metadata is not None else {}
         self.files = files if files is not None else {}
         self.uri = uri
         self._text = text
+
+    @property
+    def debate_sections(self):
+        if self._debate_sections is None:
+            self._debate_sections = (
+                self._sections_loader() if self._sections_loader is not None else []
+            )
+            self._sections_loader = None
+        return self._debate_sections
+
+    @debate_sections.setter
+    def debate_sections(self, sections):
+        self._debate_sections = sections
+        self._sections_loader = None
 
     def serialize(self):
         return {
@@ -54,6 +71,16 @@ class Debate:
 
     @property
     def text(self):
+        """The debate's full flattened text.
+
+        Computing this walks every text node in the debate XML, which is
+        expensive for long transcripts and is rarely needed (most callers
+        only want specific sections/speeches). ``_text`` may hold the
+        already-computed string, None, or a zero-arg callable to compute
+        and cache it lazily on first access.
+        """
+        if callable(self._text):
+            self._text = self._text()
         return self._text
 
     @property

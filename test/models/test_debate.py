@@ -33,3 +33,17 @@ def test_debate_model_contains_archive_data_and_nested_models():
         debate.serialize()["sections"][0]["speeches"][0]["paras"][0]["content"]
         == "Hello world."
     )
+
+
+def test_text_is_computed_lazily_and_cached():
+    calls = []
+
+    def compute():
+        calls.append(1)
+        return "computed text"
+
+    debate = Debate(text=compute)
+    assert calls == []
+    assert debate.text == "computed text"
+    assert debate.text == "computed text"
+    assert calls == [1]
