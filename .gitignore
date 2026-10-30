@@ -30,6 +30,7 @@ cache/
 .env
 .venv/
 data/oireachtas/
+poppler-0.33.0/
 
 test/resources/pdfs/*.txt
 test/resources/pdfs/*.png
