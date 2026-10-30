@@ -1,6 +1,9 @@
 import datetime as dt
+import io
 import json
+import logging
 import tempfile
+import threading
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -18,6 +21,7 @@ from oireachtas_data.models.debate import Debate
 from oireachtas_data.models.debate_section import DebateSection
 from oireachtas_data.models.para import Para
 from oireachtas_data.models.speech import Speech
+from oireachtas_data.orm import OireachtasArchive
 from oireachtas_data.utils import get_debates, iter_debates
 
 
@@ -106,7 +110,8 @@ def test_full_download_paginates_and_resumes():
         assert lazy_debates[0].date == "2026-10-22"
         assert lazy_debates[0] is lazy_debates[0]
         assert first_run_requests == 5
-        assert len(urls) == first_run_requests
+        assert sum(urlsplit(url).path.endswith("/members") for url in urls) == 4
+        assert len(urls) >= first_run_requests + 2
 
 
 def test_separate_date_ranges_in_one_month_are_both_loaded():
@@ -174,12 +179,14 @@ def test_denied_report_does_not_stop_download_and_can_be_retried():
             download_all.download_debates(output, date, date, False, False)
             index = json.loads((month / "index.json").read_text())
             assert set(index[0]["files"]) == {"xml"}
+            assert (month / "incomplete.json").exists()
             assert len(DownloadedDebates(output / "archive")) == 1
 
             denied = False
             download_all.download_debates(output, date, date, False, False)
             index = json.loads((month / "index.json").read_text())
             assert set(index[0]["files"]) == {"xml", "pdf"}
+            assert not (month / "incomplete.json").exists()
 
             denied = True
             download_all.download_debates(output, date, date, True, False)
@@ -188,17 +195,232 @@ def test_denied_report_does_not_stop_download_and_can_be_retried():
             assert (month / index[0]["files"]["pdf"]).read_bytes() == b"pdf"
 
 
-def test_download_command_fetches_the_full_archive_only():
-    with patch.object(download_all, "download_members") as members, patch.object(
-        download_all, "download_debates"
-    ) as debates:
-        download_all.main([])
-        assert members.call_count == 1
-        assert debates.call_args.args[1] == dt.date(1919, 1, 1)
-        assert debates.call_args.args[2] == dt.date.today()
-        assert debates.call_args.args[3:] == (False, False)
-        with pytest.raises(SystemExit):
-            download_all.main(["--year", "2025"])
+def test_refresh_removes_pages_beyond_new_last_page(tmp_path):
+    smaller = False
+
+    def fake_fetch(url):
+        offset = int(parse_qs(urlsplit(url).query)["skip"][0])
+        if smaller:
+            results = [{"id": 0}] if offset == 0 else []
+        else:
+            results = [{"id": 0}, {"id": 1}] if offset == 0 else [{"id": 2}]
+        return json.dumps({"results": results}).encode()
+
+    directory = tmp_path / "pages"
+    with (
+        patch.object(download_all, "PAGE_SIZE", 2),
+        patch.object(download_all, "fetch", side_effect=fake_fetch),
+    ):
+        assert len(list(download_all.pages("questions", {}, directory, False))) == 3
+        assert (directory / "000002.json").exists()
+        smaller = True
+        assert len(list(download_all.pages("questions", {}, directory, True))) == 1
+    assert not (directory / "000002.json").exists()
+
+
+def test_report_downloads_use_bounded_workers_and_atomic_files(tmp_path):
+    simultaneous = threading.Barrier(2)
+
+    def fake_fetch(url):
+        if url.endswith("report.xml") or url.endswith("report2.xml"):
+            simultaneous.wait(timeout=5)
+            return b"<debate/>"
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "debate/1",
+                            "formats": {
+                                "xml": {"uri": "https://data.oireachtas.ie/report.xml"}
+                            },
+                        },
+                    },
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "debate/2",
+                            "formats": {
+                                "xml": {"uri": "https://data.oireachtas.ie/report2.xml"}
+                            },
+                        },
+                    },
+                ]
+            }
+        ).encode()
+
+    date = dt.date(2024, 1, 22)
+    with patch.object(download_all, "fetch", side_effect=fake_fetch):
+        download_all.download_debates(tmp_path, date, date, False, False, workers=2)
+
+    directory = tmp_path / "archive" / "debates" / "2024-01" / "2024-01-22_2024-01-22"
+    index = json.loads((directory / "index.json").read_text())
+    assert len(index) == 2
+    assert index[0]["files"] != index[1]["files"]
+    for entry in index:
+        assert (directory / entry["files"]["xml"]).read_bytes() == b"<debate/>"
+    assert not list(directory.rglob("*.part"))
+
+
+@pytest.mark.parametrize("refresh", [False, True])
+def test_shared_report_url_is_fetched_once_with_workers(tmp_path, refresh):
+    url = "https://data.oireachtas.ie/report.xml"
+    simultaneous = threading.Barrier(2)
+    requests = []
+    original = download_all.download_report_file
+
+    def arrive_together(*args):
+        simultaneous.wait(timeout=5)
+        return original(*args)
+
+    def fake_fetch(requested):
+        if requested == url:
+            requests.append(requested)
+            return b"<debate/>"
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "debate/1",
+                            "formats": {"xml": {"uri": url}},
+                        },
+                    },
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "debate/2",
+                            "formats": {"xml": {"uri": url}},
+                        },
+                    },
+                ]
+            }
+        ).encode()
+
+    date = dt.date(2024, 1, 22)
+    with (
+        patch.object(download_all, "fetch", side_effect=fake_fetch),
+        patch.object(download_all, "download_report_file", side_effect=arrive_together),
+    ):
+        download_all.download_debates(tmp_path, date, date, refresh, False, workers=2)
+    assert requests == [url]
+
+
+def test_unavailable_shared_report_url_is_attempted_once(tmp_path, caplog):
+    url = "https://data.oireachtas.ie/missing.xml"
+    simultaneous = threading.Barrier(2)
+    requests = []
+    original = download_all.download_report_file
+
+    def arrive_together(*args):
+        simultaneous.wait(timeout=5)
+        return original(*args)
+
+    def fake_fetch(requested):
+        if requested == url:
+            requests.append(requested)
+            raise HTTPError(url, 403, "Forbidden", {}, None)
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "debate/1",
+                            "formats": {"xml": {"uri": url}},
+                        },
+                    },
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "debate/2",
+                            "formats": {"xml": {"uri": url}},
+                        },
+                    },
+                ]
+            }
+        ).encode()
+
+    date = dt.date(2024, 1, 22)
+    with (
+        patch.object(download_all, "fetch", side_effect=fake_fetch),
+        patch.object(download_all, "download_report_file", side_effect=arrive_together),
+    ):
+        download_all.download_debates(tmp_path, date, date, False, False, workers=2)
+    assert requests == [url]
+    assert sum(url in message for message in caplog.messages) == 1
+    directory = tmp_path / "archive" / "debates" / "2024-01" / "2024-01-22_2024-01-22"
+    assert (directory / "incomplete.json").exists()
+
+
+def test_download_url_is_logged_only_when_fetched(tmp_path, caplog):
+    url = "https://data.oireachtas.ie/report.xml"
+    caplog.set_level(logging.INFO, logger="download_all")
+    with patch.object(
+        download_all, "urlopen", return_value=io.BytesIO(b"<debate/>")
+    ) as request:
+        download_all.download_report_file(url, tmp_path, "xml", refresh=False)
+        download_all.download_report_file(url, tmp_path, "xml", refresh=False)
+    request.assert_called_once()
+    assert caplog.messages.count("Downloading " + url) == 1
+
+
+def test_downloads_debate_section_documents(tmp_path):
+    requested = []
+
+    def fake_fetch(url):
+        requested.append(url)
+        if url.endswith("section.xml"):
+            raise HTTPError(url, 403, "Forbidden", {}, None)
+        if url.endswith("section.pdf"):
+            return b"pdf"
+        if url.endswith("report.xml"):
+            return b"<debate/>"
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "contextDate": "2024-01-22",
+                        "debateRecord": {
+                            "uri": "https://data.oireachtas.ie/debate/1",
+                            "formats": {
+                                "xml": {"uri": "https://data.oireachtas.ie/report.xml"}
+                            },
+                            "debateSections": [
+                                {
+                                    "debateSection": {
+                                        "debateSectionId": "dbsect_1",
+                                        "formats": {
+                                            "xml": {
+                                                "uri": "https://data.oireachtas.ie/section.xml"
+                                            },
+                                            "pdf": {
+                                                "uri": "https://data.oireachtas.ie/section.pdf"
+                                            },
+                                        },
+                                    }
+                                }
+                            ],
+                        },
+                    }
+                ]
+            }
+        ).encode()
+
+    date = dt.date(2024, 1, 22)
+    with patch.object(download_all, "fetch", side_effect=fake_fetch):
+        download_all.download_debates(tmp_path, date, date, False, False)
+
+    month = tmp_path / "archive" / "debates" / "2024-01" / "2024-01-22_2024-01-22"
+    entry = json.loads((month / "index.json").read_text())[0]
+    assert (month / entry["files"]["xml"]).is_file()
+    assert entry["sections"][0]["id"] == "dbsect_1"
+    assert "xml" not in entry["sections"][0]["files"]
+    assert (month / entry["sections"][0]["files"]["pdf"]).is_file()
+    assert "https://data.oireachtas.ie/section.xml" not in requested
+    assert not (month / "incomplete.json").exists()
 
 
 def test_archive_xml_builds_debate_speech_and_para_models():
@@ -212,6 +434,9 @@ def test_archive_xml_builds_debate_speech_and_para_models():
           </debateSection>
         </debateSection>
       </debateBody></debate>
+      <references source="#debates">
+        <TLCPerson eId="First" href="/ie/oireachtas/member/id/First-Example.D.2020-01-01" showAs="First Example"/>
+      </references>
     </akomaNtoso>"""
     metadata = {
         "contextDate": "2026-10-22",
@@ -242,6 +467,8 @@ def test_archive_xml_builds_debate_speech_and_para_models():
     assert first.speeches[0].paras[0].content == "Hello world."
     assert len(first.speeches) == len(second.speeches) == 1
     assert second.speeches[0].by == "Second"
+    assert first.speeches[0].member_code == "First-Example.D.2020-01-01"
+    assert second.speeches[0].member_code is None
     assert first.content == "First: Hello world.\nA decision followed."
     assert first.summaries[0].eid == "sum_1"
     assert second.summaries == []

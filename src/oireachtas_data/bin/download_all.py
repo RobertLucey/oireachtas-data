@@ -1,4 +1,4 @@
-"""Download Oireachtas member records and debate reports."""
+"""Download Oireachtas API records and their linked reports."""
 
 import argparse
 import datetime as dt
@@ -6,7 +6,11 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
+from itertools import islice
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
@@ -19,11 +23,14 @@ from oireachtas_data.models.member import Member
 API_URL = "https://api.oireachtas.ie/v1"
 PAGE_SIZE = 1000
 FIRST_DEBATE = dt.date(1919, 1, 1)
+FORMAT_KINDS = ("xml", "pdf", "writtens_pdf")
+COLLECTIONS = ("members", "debates")
 LOG = logging.getLogger("download_all")
 
 
 def fetch(url):
     """Fetch a URL, retrying temporary API and network failures."""
+    LOG.info("Downloading %s", url)
     for attempt in range(5):
         try:
             with urlopen(
@@ -44,7 +51,10 @@ def fetch(url):
 
 def save_bytes(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".part")
+    with tempfile.NamedTemporaryFile(
+        dir=path.parent, prefix=path.name + ".", suffix=".part", delete=False
+    ) as handle:
+        temporary = Path(handle.name)
     try:
         temporary.write_bytes(data)
         os.replace(temporary, path)
@@ -82,6 +92,10 @@ def pages(endpoint, params, directory, refresh):
         for record in page:
             yield record
         if len(page) < PAGE_SIZE:
+            if refresh:
+                for stale in directory.glob("[0-9][0-9][0-9][0-9][0-9][0-9].json"):
+                    if int(stale.stem) > skip:
+                        stale.unlink()
             break
         skip += PAGE_SIZE
 
@@ -94,26 +108,148 @@ def month_ranges(start, end):
         cursor = next_month
 
 
-def download_report_file(url, directory, kind, refresh):
+def year_ranges(start, end):
+    for year in range(start.year, end.year + 1):
+        yield max(start, dt.date(year, 1, 1)), min(end, dt.date(year, 12, 31))
+
+
+def month_directory(output, collection, first, last):
+    # Keep the active month at one path as its API date_end advances each day.
+    today = dt.date.today()
+    if first.day == 1 and (first.year, first.month) == (today.year, today.month):
+        last_in_month = (first + dt.timedelta(days=32)).replace(day=1) - dt.timedelta(
+            days=1
+        )
+        directory_end = last_in_month
+    else:
+        directory_end = last
+    return (
+        output
+        / "archive"
+        / collection
+        / first.strftime("%Y-%m")
+        / (first.isoformat() + "_" + directory_end.isoformat())
+    )
+
+
+class ReportFetchState:
+    """Coordinate report requests shared by records in one download run."""
+
+    def __init__(self):
+        self.locks = [threading.Lock() for _ in range(128)]
+        self.attempts = {}
+
+
+def download_report_file(url, directory, kind, refresh, state=None):
     parsed = urlsplit(url)
     if parsed.scheme != "https" or parsed.hostname != "data.oireachtas.ie":
         raise ValueError("Unexpected report URL: " + url)
     digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:20]
     path = directory / (kind + "-" + digest + (".xml" if kind == "xml" else ".pdf"))
-    if not path.exists() or refresh:
+    state = state or ReportFetchState()
+    with state.locks[int(digest[:8], 16) % len(state.locks)]:
+        previous = state.attempts.get(path)
+        if previous is not None and previous is not True:
+            cached_error = HTTPError(url, previous, "Unavailable", None, None)
+            cached_error.cached = True
+            raise cached_error
+        if path.exists() and (not refresh or previous is True):
+            return path
         try:
             save_bytes(path, fetch(url))
         except HTTPError as exc:
             if exc.code in (403, 404, 410) and path.exists():
+                state.attempts[path] = True
                 LOG.warning(
                     "Could not refresh %s (%s); keeping saved file", url, exc.code
                 )
             else:
+                if exc.code in (403, 404, 410):
+                    state.attempts[path] = exc.code
                 raise
+        else:
+            state.attempts[path] = True
     return path
 
 
+def download_formats(formats, directory, refresh, description, state=None):
+    """Save available XML/PDF links in a report directory."""
+    if not isinstance(formats, dict):
+        return {}, 0
+    saved = {}
+    unavailable = 0
+    for kind in FORMAT_KINDS:
+        format_data = formats.get(kind) or {}
+        url = format_data.get("uri") if isinstance(format_data, dict) else None
+        if not url:
+            continue
+        try:
+            path = download_report_file(url, directory, kind, refresh, state)
+        except HTTPError as exc:
+            if exc.code not in (403, 404, 410):
+                raise
+            unavailable += 1
+            if not getattr(exc, "cached", False):
+                LOG.warning(
+                    "Skipping unavailable %s for %s (%s): %s",
+                    kind,
+                    description,
+                    exc.code,
+                    url,
+                )
+        else:
+            saved[kind] = path.name
+    return saved, unavailable
+
+
+def _save_linked_files(
+    formats, record_dir, subdirectory, refresh, description, state=None
+):
+    saved, unavailable = download_formats(
+        formats, record_dir / subdirectory, refresh, description, state
+    )
+    paths = {kind: str(Path(subdirectory) / name) for kind, name in saved.items()}
+    return paths, unavailable
+
+
+def _write_index(path, records):
+    save_bytes(path, json.dumps(records, ensure_ascii=False).encode("utf-8"))
+
+
+def _period_complete(index_path, refresh):
+    return (
+        not refresh
+        and index_path.exists()
+        and not (index_path.parent / "incomplete.json").exists()
+    )
+
+
+def _finish_period(index_path, records, unavailable):
+    _write_index(index_path, records)
+    marker = index_path.parent / "incomplete.json"
+    if unavailable:
+        save_bytes(marker, json.dumps({"unavailable_reports": unavailable}).encode())
+    elif marker.exists():
+        marker.unlink()
+
+
+def _map_records(records, process, workers):
+    """Process a bounded batch of records concurrently, preserving API order."""
+    if workers == 1:
+        for record in records:
+            yield process(record)
+        return
+    records = iter(records)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        while True:
+            batch = list(islice(records, workers * 4))
+            if not batch:
+                break
+            yield from executor.map(process, batch)
+
+
 def download_members(output, refresh):
+    refresh = True  # Reference data can change without a new archive directory.
     records = list(
         pages("members", {}, output / "archive" / "members" / "pages", refresh)
     )
@@ -129,21 +265,21 @@ def download_members(output, refresh):
     LOG.info("Saved %s member records", len(records))
 
 
-def download_debates(output, start, end, refresh, metadata_only):
+def download_debates(output, start, end, refresh, metadata_only, workers=1):
     count = 0
     unavailable = 0
+    skipped_periods = 0
     for first, last in month_ranges(start, end):
-        month_dir = (
-            output
-            / "archive"
-            / "debates"
-            / first.strftime("%Y-%m")
-            / (first.isoformat() + "_" + last.isoformat())
-        )
+        refresh_period = refresh or last >= dt.date.today().replace(day=1)
+        month_dir = month_directory(output, "debates", first, last)
+        index_path = month_dir / "index.json"
+        if _period_complete(index_path, refresh_period):
+            skipped_periods += 1
+            continue
+        report_state = ReportFetchState()
         params = {"date_start": first.isoformat(), "date_end": last.isoformat()}
-        index = []
-        for item in pages("debates", params, month_dir / "pages", refresh):
-            count += 1
+
+        def process(item):
             record = item.get("debateRecord", {})
             formats = record.get("formats") or {}
             entry = {
@@ -151,35 +287,55 @@ def download_debates(output, start, end, refresh, metadata_only):
                 "uri": record.get("uri"),
                 "files": {},
             }
+            skipped_total = 0
             if not metadata_only:
-                for kind in ("xml", "pdf", "writtens_pdf"):
-                    format_data = formats.get(kind) or {}
-                    url = format_data.get("uri")
-                    if url:
-                        try:
-                            path = download_report_file(
-                                url, month_dir / "reports", kind, refresh
-                            )
-                        except HTTPError as exc:
-                            if exc.code not in (403, 404, 410):
-                                raise
-                            unavailable += 1
-                            LOG.warning(
-                                "Skipping unavailable %s report for %s (%s): %s",
-                                kind,
-                                entry["date"],
-                                exc.code,
-                                url,
-                            )
-                        else:
-                            entry["files"][kind] = str(path.relative_to(month_dir))
+                entry["files"], skipped = _save_linked_files(
+                    formats, month_dir, "reports", refresh, entry["date"], report_state
+                )
+                skipped_total += skipped
+                entry["sections"] = []
+                for section_item in record.get("debateSections") or []:
+                    section = section_item.get("debateSection") or {}
+                    section_formats = section.get("formats") or {}
+                    if "xml" in entry["files"] and isinstance(section_formats, dict):
+                        # The full debate XML already contains its sections.
+                        section_formats = {
+                            kind: value
+                            for kind, value in section_formats.items()
+                            if kind != "xml"
+                        }
+                    section_files, skipped = _save_linked_files(
+                        section_formats,
+                        month_dir,
+                        "reports/sections",
+                        refresh,
+                        section.get("debateSectionId") or entry["date"],
+                        report_state,
+                    )
+                    skipped_total += skipped
+                    entry["sections"].append(
+                        {"id": section.get("debateSectionId"), "files": section_files}
+                    )
+            return entry, skipped_total
+
+        index = []
+        period_unavailable = 0
+        for entry, skipped in _map_records(
+            pages("debates", params, month_dir / "pages", refresh_period),
+            process,
+            workers,
+        ):
             index.append(entry)
-        save_bytes(
-            month_dir / "index.json",
-            json.dumps(index, ensure_ascii=False).encode("utf-8"),
-        )
+            count += 1
+            unavailable += skipped
+            period_unavailable += skipped
+        _finish_period(index_path, index, period_unavailable)
         LOG.info("Completed %s", first.strftime("%Y-%m"))
-    LOG.info("Processed %s debate records", count)
+    LOG.info(
+        "Processed %s debate records; reused %s completed periods",
+        count,
+        skipped_periods,
+    )
     if unavailable:
         LOG.warning(
             "Skipped %s unavailable report files; rerun to retry them", unavailable
@@ -192,13 +348,23 @@ def main(argv=None):
     parser.add_argument(
         "--refresh", action="store_true", help="Re-fetch existing pages and reports"
     )
+    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument(
+        "--collections", nargs="+", choices=COLLECTIONS, default=COLLECTIONS
+    )
     args = parser.parse_args(argv)
+    if args.workers < 1:
+        parser.error("--workers must be at least 1")
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     LOG.info("Saving data under %s", args.output_dir.resolve())
-    download_members(args.output_dir, args.refresh)
-    download_debates(
-        args.output_dir, FIRST_DEBATE, dt.date.today(), args.refresh, False
-    )
+    selected = set(args.collections)
+    if "members" in selected:
+        download_members(args.output_dir, args.refresh)
+    if "debates" in selected:
+        download_debates(
+            args.output_dir, FIRST_DEBATE, dt.date.today(), args.refresh, False,
+            workers=args.workers,
+        )
 
 
 if __name__ == "__main__":
