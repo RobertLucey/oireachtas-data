@@ -21,14 +21,4 @@ OIREACHTAS_DIR = os.path.join(
 )
 os.makedirs(OIREACHTAS_DIR, exist_ok=True)
 
-DEBATES_DIR = os.path.join(OIREACHTAS_DIR, "debates")
-os.makedirs(DEBATES_DIR, exist_ok=True)
-
 MEMBERS_DIR = os.path.join(OIREACHTAS_DIR, "members")
-os.makedirs(MEMBERS_DIR, exist_ok=True)
-
-LOG_LOCATION = (
-    "/tmp/test_oireachtas_data.log"
-    if os.getenv("TEST_ENV", "False") != "False"
-    else os.path.join(OIREACHTAS_DIR, "oireachtas_data.log")
-)
