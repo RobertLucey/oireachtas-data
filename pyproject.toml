@@ -30,3 +30,7 @@ oireachtas_duplicates = "oireachtas_data.bin.find_duplicates:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+norecursedirs = ["data", "poppler-*", ".venv", ".git"]
