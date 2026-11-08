@@ -236,7 +236,7 @@ class DownloadedDebates:
             key=lambda path: (
                 path.parent.parent.name,
                 path.parent.name.rsplit("_", 1)[-1],
-                path.parent.name,
+                -int(path.parent.name.split("_", 1)[0].replace("-", "")),
             ),
         ):
             directory = index_path.parent

@@ -342,3 +342,23 @@ def test_overlapping_saved_ranges_prefer_newest_record(tmp_path):
     debates = DownloadedDebates(root)
     assert len(debates) == 1
     assert debates[0].chamber == "Updated"
+
+
+def test_overlapping_ranges_with_same_end_prefer_wider_range(tmp_path):
+    root = tmp_path / "archive"
+    for start, chamber in (("2024-01-31", "Old"), ("2024-01-01", "Updated")):
+        _collection(
+            root,
+            "debates",
+            "2024-01/" + start + "_2024-01-31",
+            {
+                "contextDate": "2024-01-31",
+                "debateRecord": {"uri": "debate/1", "chamber": {"showAs": chamber}},
+            },
+            {"uri": "debate/1", "files": {}},
+        )
+
+    db = OireachtasArchive(root)
+    assert db.debates.count() == 1
+    assert db.debates.get(uri="debate/1").chamber == "Updated"
+    assert DownloadedDebates(root)[0].chamber == "Updated"

@@ -351,8 +351,11 @@ class ArchiveQuery:
     @staticmethod
     def _index_sort_key(path):
         name = path.parent.name
-        # Prefer the widest, most recent saved range within a month.
-        return (path.parent.parent.name, name.rsplit("_", 1)[-1], name)
+        if "_" not in name:
+            return (name, name, 0)
+        start, end = name.split("_", 1)
+        # Later end dates win; for the same end date, prefer the wider range.
+        return (path.parent.parent.name, end, -int(start.replace("-", "")))
 
     def _make(self, metadata, index, directory):
         collection = self.collection
