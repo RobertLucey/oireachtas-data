@@ -4,6 +4,7 @@ import json
 import logging
 import tempfile
 import threading
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -297,10 +298,9 @@ def test_refresh_removes_pages_beyond_new_last_page(tmp_path):
         return json.dumps({"results": results}).encode()
 
     directory = tmp_path / "pages"
-    with (
-        patch.object(download_all, "PAGE_SIZE", 2),
-        patch.object(download_all, "fetch", side_effect=fake_fetch),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(download_all, "PAGE_SIZE", 2))
+        stack.enter_context(patch.object(download_all, "fetch", side_effect=fake_fetch))
         assert len(list(download_all.pages("questions", {}, directory, False))) == 3
         assert (directory / "000002.json").exists()
         smaller = True
@@ -416,10 +416,9 @@ def test_shared_report_url_is_fetched_once_with_workers(tmp_path, refresh):
         ).encode()
 
     date = dt.date(2024, 1, 22)
-    with (
-        patch.object(download_all, "fetch", side_effect=fake_fetch),
-        patch.object(download_all, "download_report_file", side_effect=arrive_together),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(download_all, "fetch", side_effect=fake_fetch))
+        stack.enter_context(patch.object(download_all, "download_report_file", side_effect=arrive_together))
         download_all.download_debates(tmp_path, date, date, refresh, False, workers=2)
     assert requests == [url]
 
@@ -460,10 +459,9 @@ def test_unavailable_shared_report_url_is_attempted_once(tmp_path, caplog):
         ).encode()
 
     date = dt.date(2024, 1, 22)
-    with (
-        patch.object(download_all, "fetch", side_effect=fake_fetch),
-        patch.object(download_all, "download_report_file", side_effect=arrive_together),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(download_all, "fetch", side_effect=fake_fetch))
+        stack.enter_context(patch.object(download_all, "download_report_file", side_effect=arrive_together))
         download_all.download_debates(tmp_path, date, date, False, False, workers=2)
     assert requests == [url]
     assert sum(url in message for message in caplog.messages) == 1
@@ -484,14 +482,13 @@ def test_download_url_is_logged_only_when_fetched(tmp_path, caplog):
 
 
 def test_download_command_fetches_the_full_archive_only():
-    with (
-        patch.object(download_all, "download_members") as members,
-        patch.object(download_all, "download_reference_data") as references,
-        patch.object(download_all, "download_debates") as debates,
-        patch.object(download_all, "download_questions") as questions,
-        patch.object(download_all, "download_votes") as votes,
-        patch.object(download_all, "download_legislation") as legislation,
-    ):
+    with ExitStack() as stack:
+        members = stack.enter_context(patch.object(download_all, "download_members"))
+        references = stack.enter_context(patch.object(download_all, "download_reference_data"))
+        debates = stack.enter_context(patch.object(download_all, "download_debates"))
+        questions = stack.enter_context(patch.object(download_all, "download_questions"))
+        votes = stack.enter_context(patch.object(download_all, "download_votes"))
+        legislation = stack.enter_context(patch.object(download_all, "download_legislation"))
         download_all.main([])
         assert members.call_count == 1
         assert references.call_count == 1
@@ -511,14 +508,13 @@ def test_download_command_fetches_the_full_archive_only():
 
 
 def test_download_command_can_select_only_debates():
-    with (
-        patch.object(download_all, "download_members") as members,
-        patch.object(download_all, "download_reference_data") as references,
-        patch.object(download_all, "download_debates") as debates,
-        patch.object(download_all, "download_questions") as questions,
-        patch.object(download_all, "download_votes") as votes,
-        patch.object(download_all, "download_legislation") as legislation,
-    ):
+    with ExitStack() as stack:
+        members = stack.enter_context(patch.object(download_all, "download_members"))
+        references = stack.enter_context(patch.object(download_all, "download_reference_data"))
+        debates = stack.enter_context(patch.object(download_all, "download_debates"))
+        questions = stack.enter_context(patch.object(download_all, "download_questions"))
+        votes = stack.enter_context(patch.object(download_all, "download_votes"))
+        legislation = stack.enter_context(patch.object(download_all, "download_legislation"))
         download_all.main(["--collections", "debates"])
     debates.assert_called_once()
     for skipped in (members, references, questions, votes, legislation):

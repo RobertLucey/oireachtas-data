@@ -190,7 +190,9 @@ def download_formats(formats, directory, refresh, description, state=None):
             if exc.code not in (403, 404, 410):
                 raise
             unavailable += 1
-            if not getattr(exc, "cached", False):
+            # Not getattr: on Python 3.8 a missing attribute on an HTTPError
+            # without a body raises KeyError rather than AttributeError.
+            if not vars(exc).get("cached", False):
                 LOG.warning(
                     "Skipping unavailable %s for %s (%s): %s",
                     kind,
