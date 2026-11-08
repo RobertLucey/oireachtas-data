@@ -29,29 +29,6 @@ just download --refresh
 Set `OIREACHTAS_ARCHIVE_DIR` to inspect an archive other than the default
 `data/oireachtas/0/archive`.
 
-Check for identical downloaded reports saved under different URL-derived names:
-
-```sh
-just duplicate-files
-```
-
-The check reads report XML and PDFs without changing them. It groups files by
-size, compares short samples, then hashes matching candidates to confirm exact
-copies. Copies with the same filename are skipped by default because that name
-comes from the source URL; use `--include-same-name` to show them too. Use
-`--all-files` to include API pages and other files. Exit status is 1 when it
-finds suspicious groups, 0 when it finds none, and 2 for an invalid directory.
-
-To check question metadata for repeated questions with different URIs, run:
-
-```sh
-just duplicate-questions
-```
-
-This groups records by date, asking member, and normalized question text. It
-shows whether the answers match and where each record appears in the saved API
-pages. It only reports matches; it does not remove records.
-
 Explore interactively
 ----------------------
 
